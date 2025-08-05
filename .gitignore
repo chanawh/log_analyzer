@@ -1,0 +1,4 @@
+*.pyc
+*-messages
+__pycache__
+*.log
