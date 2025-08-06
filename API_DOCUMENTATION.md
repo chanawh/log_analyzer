@@ -9,9 +9,10 @@ http://localhost:5000
 
 ## API Overview
 
-The API is divided into two main modules:
+The API is divided into three main modules:
 - **SSH Module**: For remote file browsing and downloading
-- **Log Module**: For log file analysis and processing
+- **Log Module**: For log file analysis and processing  
+- **SQL Module**: For database storage and SQL querying of log data
 
 ## General Endpoints
 
@@ -27,10 +28,11 @@ Returns the API status and available endpoints.
   "status": "healthy",
   "service": "log_analyzer_api", 
   "version": "1.0.0",
-  "modules": ["ssh", "log"],
+  "modules": ["ssh", "log", "sql"],
   "endpoints": {
     "ssh": [...],
     "log": [...],
+    "sql": [...],
     "general": [...]
   }
 }
@@ -241,6 +243,183 @@ Groups log entries by program for detailed analysis.
 }
 ```
 
+## SQL Module Endpoints
+
+### Import Log File to Database
+```
+POST /sql/import
+```
+Imports a log file into SQLite database for SQL querying.
+
+**Request Body:**
+```json
+{
+  "filepath": "/tmp/app.log",
+  "table_name": "app_logs"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Log file imported successfully",
+  "import_result": {
+    "table_name": "app_logs",
+    "imported_lines": 1000,
+    "failed_lines": 0,
+    "total_lines": 1000,
+    "source_file": "/tmp/app.log"
+  },
+  "table_stats": {
+    "table_name": "app_logs",
+    "row_count": 1000,
+    "date_range": {
+      "start": "2023-01-01 00:00:01",
+      "end": "2023-01-31 23:59:59"
+    },
+    "top_programs": [
+      {"program": "isi_service", "count": 500}
+    ],
+    "log_levels": [
+      {"level": "INFO", "count": 600},
+      {"level": "ERROR", "count": 200}
+    ]
+  }
+}
+```
+
+### Execute SQL Query
+```
+POST /sql/query
+```
+Executes SQL SELECT queries on imported log data.
+
+**Request Body:**
+```json
+{
+  "query": "SELECT level, COUNT(*) as count FROM app_logs GROUP BY level"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Query executed successfully",
+  "result": {
+    "query": "SELECT level, COUNT(*) as count FROM app_logs GROUP BY level",
+    "columns": ["level", "count"],
+    "rows": [
+      {"level": "INFO", "count": 600},
+      {"level": "ERROR", "count": 200}
+    ],
+    "row_count": 2
+  }
+}
+```
+
+### List Database Tables
+```
+GET /sql/tables
+```
+Lists all available tables in the database.
+
+**Response:**
+```json
+{
+  "tables": ["app_logs", "system_logs"],
+  "table_count": 2,
+  "table_details": [
+    {
+      "table_name": "app_logs",
+      "row_count": 1000,
+      "date_range": {"start": "2023-01-01", "end": "2023-01-31"},
+      "top_programs": [...],
+      "log_levels": [...]
+    }
+  ]
+}
+```
+
+### Get Table Schema
+```
+GET /sql/schema?table=app_logs
+```
+Returns schema information for a specific table.
+
+**Query Parameters:**
+- `table` (required): Table name
+
+**Response:**
+```json
+{
+  "table_name": "app_logs",
+  "schema": [
+    {
+      "column_id": 0,
+      "name": "id",
+      "type": "INTEGER",
+      "not_null": false,
+      "primary_key": true
+    },
+    {
+      "column_id": 1,
+      "name": "timestamp",
+      "type": "TEXT",
+      "not_null": false,
+      "primary_key": false
+    }
+  ],
+  "stats": {
+    "row_count": 1000,
+    "date_range": {...}
+  }
+}
+```
+
+### Delete Table
+```
+DELETE /sql/table
+```
+Deletes a table from the database.
+
+**Request Body:**
+```json
+{
+  "table_name": "app_logs"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Table \"app_logs\" deleted successfully"
+}
+```
+
+### Upload and Import
+```
+POST /sql/upload-and-import
+```
+Uploads a log file and imports it into database in one step.
+
+**Request:** Multipart form data
+- `file`: Log file (.log or .txt extension required)
+- `table_name` (optional): Custom table name
+
+**Response:**
+```json
+{
+  "message": "File uploaded and imported successfully",
+  "uploaded_file": {
+    "filename": "app.log",
+    "size": 1024,
+    "path": "/tmp/app.log"
+  },
+  "import_result": {...},
+  "table_stats": {...}
+}
+```
+
 ## Error Responses
 
 All endpoints return appropriate HTTP status codes and error messages:
@@ -303,6 +482,42 @@ curl -X POST -H "Content-Type: application/json" \
   http://localhost:5000/log/drill-down
 ```
 
+### SQL Analysis Workflow
+
+1. **Import log file into database:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"filepath": "/tmp/app.log", "table_name": "app_logs"}' \
+  http://localhost:5000/sql/import
+```
+
+2. **Query log levels distribution:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"query": "SELECT level, COUNT(*) as count FROM app_logs GROUP BY level ORDER BY count DESC"}' \
+  http://localhost:5000/sql/query
+```
+
+3. **Find errors from specific program:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"query": "SELECT timestamp, message FROM app_logs WHERE level = \"ERROR\" AND program = \"isi_daemon\" ORDER BY timestamp"}' \
+  http://localhost:5000/sql/query
+```
+
+4. **Analyze time-based patterns:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"query": "SELECT substr(timestamp, 12, 2) as hour, COUNT(*) as count FROM app_logs GROUP BY hour ORDER BY hour"}' \
+  http://localhost:5000/sql/query
+```
+
+5. **Upload and import in one step:**
+```bash
+curl -X POST -F "file=@app.log" -F "table_name=my_logs" \
+  http://localhost:5000/sql/upload-and-import
+```
+
 ### SSH File Access Workflow
 
 1. **Connect to server:**
@@ -329,12 +544,31 @@ curl -X POST -H "Content-Type: application/json" \
 curl -X POST http://localhost:5000/ssh/disconnect
 ```
 
-## File Size Limits
+## Database Schema
 
-- Maximum upload file size: 16MB
-- Supported file extensions: .log, .txt
-- Response line limits apply to prevent memory issues
+When importing logs via SQL endpoints, data is stored in the following schema:
 
-## Session Management
+```sql
+CREATE TABLE table_name (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT,           -- Extracted timestamp (YYYY-MM-DD HH:MM:SS)
+    program TEXT,            -- Program/service name (e.g., isi_service, isi_daemon)
+    message TEXT,            -- Log message content
+    level TEXT,              -- Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    full_line TEXT NOT NULL, -- Complete original log line
+    source_file TEXT,        -- Path to source log file
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-SSH connections use Flask sessions for state management. Each connection gets a unique session ID that tracks the SSH browser instance.
+**Indexes created for performance:**
+- `idx_table_timestamp` on timestamp column
+- `idx_table_program` on program column  
+- `idx_table_level` on level column
+
+## Security
+
+- SQL queries are restricted to SELECT statements only
+- Dangerous operations (DROP, DELETE, INSERT, UPDATE) are blocked
+- File uploads are limited to .log and .txt extensions
+- Maximum file size: 16MB
