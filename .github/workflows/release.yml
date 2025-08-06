@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Run tests
+      run: |
+        coverage run -m unittest discover tests/ -v
+        coverage report -m
+
+    - name: Build Docker image
+      run: |
+        docker build -t log-analyzer:${{ github.ref_name }} .
+        docker tag log-analyzer:${{ github.ref_name }} log-analyzer:latest
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          Release ${{ github.ref_name }}
+          
+          ## Changes
+          - Automated release from tag
+          
+          ## Docker
+          ```bash
+          docker pull log-analyzer:${{ github.ref_name }}
+          ```
+          
+          ## Installation
+          ```bash
+          git clone https://github.com/chanawh/log_analyzer.git
+          cd log_analyzer
+          pip install -r requirements.txt
+          ```
+        draft: false
+        prerelease: false
