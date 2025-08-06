@@ -10,7 +10,12 @@ A comprehensive log analysis tool with both GUI and API interfaces for analyzing
 - Download files for analysis
 - Session-based connection management
 
-### Log Analysis Module
+### SQL Module
+- Import log files into SQLite database
+- Execute SQL queries on imported data
+- Database table management (create, list, delete)
+- Advanced analytics with SQL aggregations
+- Secure query execution (SELECT only)
 - Upload and analyze log files
 - Filter logs by keywords and date ranges
 - Generate statistical summaries
@@ -18,7 +23,7 @@ A comprehensive log analysis tool with both GUI and API interfaces for analyzing
 - Advanced search with boolean operators
 - Batch processing of multiple files
 
-### API Endpoints (12 total)
+### API Endpoints (18 total)
 
 **SSH Operations (5 endpoints):**
 - `POST /ssh/connect` - Connect to SSH server
@@ -34,6 +39,14 @@ A comprehensive log analysis tool with both GUI and API interfaces for analyzing
 - `POST /log/drill-down` - Group by program
 - `POST /log/batch-analyze` - Batch process multiple files
 - `POST /log/search` - Advanced search with boolean operators
+
+**SQL Operations (6 endpoints):**
+- `POST /sql/import` - Import log file to database
+- `POST /sql/query` - Execute SQL queries on data
+- `GET /sql/tables` - List database tables
+- `GET /sql/schema` - Get table schema information
+- `DELETE /sql/table` - Delete database table
+- `POST /sql/upload-and-import` - Upload and import in one step
 
 **General (1 endpoint):**
 - `GET /health` - API health check
@@ -96,7 +109,10 @@ log_analyzer/
 - **File Upload**: Secure file upload with validation
 - **Batch Processing**: Analyze multiple files simultaneously
 - **Advanced Search**: Boolean operators (AND/OR) with multiple keywords
+- **SQL Database Storage**: Import logs into SQLite for complex querying
+- **SQL Query Engine**: Execute SELECT queries on imported log data
+- **Database Management**: Create, list, delete tables with schema inspection
 - **Error Handling**: Comprehensive validation and error responses
 - **Documentation**: Complete API reference with examples
 - **Testing**: Extensive test coverage for all endpoints
-- **Security**: File type validation and size limits
+- **Security**: File type validation, size limits, and SQL injection protection
