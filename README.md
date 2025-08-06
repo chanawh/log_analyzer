@@ -1,5 +1,8 @@
 # Log Analyzer - Expanded API
 
+[![CI/CD Pipeline](https://github.com/chanawh/log_analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/chanawh/log_analyzer/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/chanawh/log_analyzer/branch/main/graph/badge.svg)](https://codecov.io/gh/chanawh/log_analyzer)
+
 A comprehensive log analysis tool with both GUI and API interfaces for analyzing log files and remote SSH file access.
 
 ## Features
@@ -116,3 +119,39 @@ log_analyzer/
 - **Documentation**: Complete API reference with examples
 - **Testing**: Extensive test coverage for all endpoints
 - **Security**: File type validation, size limits, and SQL injection protection
+
+## CI/CD
+
+This project includes a comprehensive CI/CD pipeline that:
+
+- **Automated Testing**: Runs on Python 3.8-3.12 for compatibility
+- **Code Quality**: Linting with flake8 for code standards
+- **Test Coverage**: Coverage reporting with Codecov integration
+- **Docker Support**: Containerized deployment ready
+- **Multi-branch**: Supports main and develop branches
+
+### CI/CD Features
+
+- ✅ **Automated Tests**: Full test suite runs on every push/PR
+- ✅ **Code Linting**: flake8 ensures code quality
+- ✅ **Coverage Reports**: Track test coverage over time
+- ✅ **Docker Building**: Container image built and tested
+- ✅ **Multi-Python**: Tests against 5 Python versions
+- ✅ **Caching**: Optimized builds with dependency caching
+
+### Running Locally
+
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Run linting
+flake8 .
+
+# Run tests with coverage
+coverage run -m unittest discover tests/ -v
+coverage report -m
+
+# Build Docker image
+docker build -t log-analyzer:latest .
+```

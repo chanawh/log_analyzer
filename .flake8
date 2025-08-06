@@ -1,0 +1,13 @@
+[flake8]
+max-line-length = 127
+max-complexity = 15
+ignore = E203, W503, W293, E402, E302, E305, W292, W291
+exclude = 
+    .git,
+    __pycache__,
+    *.pyc,
+    .venv,
+    venv,
+    .env
+per-file-ignores =
+    tests/*:F401,F811,E128

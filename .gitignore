@@ -2,3 +2,19 @@
 *-messages
 __pycache__
 *.log
+
+# Testing and CI/CD
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.venv
+venv/
