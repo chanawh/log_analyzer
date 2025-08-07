@@ -88,4 +88,4 @@ def explain():
     return render_template("explain.html", log_text=log_text, explanation=explanation)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")

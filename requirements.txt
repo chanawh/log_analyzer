@@ -1,2 +1,8 @@
-paramiko
 flask
+werkzeug
+paramiko
+transformers
+torch
+accelerate
+pytest
+psycopg2-binary
