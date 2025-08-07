@@ -6,3 +6,9 @@ requests
 gunicorn
 click
 pyyaml
+pyjwt
+flask-jwt-extended
+openai
+anthropic
+flask-cors
+python-dotenv

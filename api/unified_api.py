@@ -5,7 +5,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import tempfile
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file, session
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+
 from core.ssh_browser import SSHBrowser
 from core.log_utils import filter_log_lines, summarize_log, drill_down_by_program
 from core.sql_utils import get_database, close_database
@@ -13,14 +16,32 @@ from core.metrics import (
     setup_metrics, track_requests, track_ssh_connection, track_ssh_session_change,
     track_log_processing, track_sql_query, track_upload, get_metrics
 )
+from core.auth import setup_auth
+from api.auth_api import register_auth_routes
+from api.ai_api import register_ai_routes
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'supersecret')  # Use environment variable
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'supersecret')
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
+
+# Enable CORS for all routes
+CORS(app, origins=['http://localhost:3000', 'http://localhost:8080'])
+
+# Initialize authentication
+jwt = setup_auth(app)
 
 # Initialize metrics
 setup_metrics()
 
+# Register authentication and AI routes
+register_auth_routes(app)
+register_ai_routes(app)
+
+# Store browser instances per session and uploaded files
+ssh_sessions = {}
 # Store browser instances per session and uploaded files
 ssh_sessions = {}
 UPLOAD_FOLDER = tempfile.gettempdir()
