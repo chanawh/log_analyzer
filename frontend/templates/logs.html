@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Log Analysis - Log Analyzer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-file-alt"></i> Log Analysis
+            <small class="text-muted">Upload and analyze log files</small>
+        </h1>
+    </div>
+</div>
+
+<!-- File Upload Panel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-upload"></i> File Upload
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="log-file" class="form-label">Select Log File (.log or .txt)</label>
+                    <input type="file" class="form-control" id="log-file" accept=".log,.txt">
+                    <div class="form-text">Maximum file size: 16MB. Supported formats: .log, .txt</div>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="uploadFile()">
+                    <i class="fas fa-upload"></i> Upload File
+                </button>
+                <div id="upload-progress" class="mt-3" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="uploaded-file-info" class="mt-3" style="display: none;">
+                    <div class="alert alert-success">
+                        <strong>File uploaded successfully:</strong>
+                        <div>Name: <span id="uploaded-filename"></span></div>
+                        <div>Size: <span id="uploaded-filesize"></span></div>
+                        <div>Path: <span id="uploaded-filepath" class="font-monospace small"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Options Panel -->
+<div class="row mb-4" id="analysis-panel" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs"></i> Analysis Options
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Operation Type</h6>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="operation" id="op-summarize" value="summarize" checked>
+                                <label class="form-check-label" for="op-summarize">
+                                    <i class="fas fa-chart-pie"></i> Summarize - Generate log statistics
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="operation" id="op-filter" value="filter">
+                                <label class="form-check-label" for="op-filter">
+                                    <i class="fas fa-filter"></i> Filter - Search by keyword
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="operation" id="op-drill-down" value="drill-down">
+                                <label class="form-check-label" for="op-drill-down">
+                                    <i class="fas fa-search"></i> Drill Down - Group by program
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="operation" id="op-search" value="search">
+                                <label class="form-check-label" for="op-search">
+                                    <i class="fas fa-search-plus"></i> Advanced Search - Multi-keyword search
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Filters</h6>
+                        <div class="mb-3">
+                            <label for="keyword" class="form-label">Keyword (for filter operation)</label>
+                            <input type="text" class="form-control" id="keyword" placeholder="e.g., ERROR, WARNING">
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <label for="start-date" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="start-date">
+                            </div>
+                            <div class="col-6">
+                                <label for="end-date" class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="end-date">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label for="limit" class="form-label">Results Limit</label>
+                            <input type="number" class="form-control" id="limit" value="100" min="1" max="1000">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Search Options -->
+                <div id="advanced-search-options" style="display: none;">
+                    <hr>
+                    <h6>Advanced Search Options</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="keywords" class="form-label">Keywords (comma-separated)</label>
+                            <input type="text" class="form-control" id="keywords" placeholder="ERROR, WARNING, CRITICAL">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="operator" class="form-label">Operator</label>
+                            <select class="form-select" id="operator">
+                                <option value="OR">OR (any keyword)</option>
+                                <option value="AND">AND (all keywords)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="case-sensitive">
+                                <label class="form-check-label" for="case-sensitive">
+                                    Case Sensitive
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <button type="button" class="btn btn-success" onclick="analyzeLog()" id="analyze-btn">
+                        <i class="fas fa-play"></i> Run Analysis
+                    </button>
+                    <button type="button" class="btn btn-secondary ms-2" onclick="clearResults()">
+                        <i class="fas fa-trash"></i> Clear Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Panel -->
+<div class="row" id="results-panel" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> Analysis Results
+                </h5>
+                <div>
+                    <span id="operation-type" class="badge bg-primary"></span>
+                    <span id="processing-time" class="badge bg-secondary"></span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="results-content">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Processing...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Messages -->
+<div id="alert-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentFilePath = '';
+let currentFileName = '';
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Show/hide advanced search options based on operation selection
+    const operationRadios = document.querySelectorAll('input[name="operation"]');
+    operationRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const advancedOptions = document.getElementById('advanced-search-options');
+            if (this.value === 'search') {
+                advancedOptions.style.display = 'block';
+            } else {
+                advancedOptions.style.display = 'none';
+            }
+        });
+    });
+    
+    // Check for file parameter from URL (from SSH download)
+    const urlParams = new URLSearchParams(window.location.search);
+    const fileParam = urlParams.get('file');
+    const nameParam = urlParams.get('name');
+    
+    if (fileParam && nameParam) {
+        currentFilePath = fileParam;
+        currentFileName = nameParam;
+        showUploadedFileInfo(nameParam, 'Unknown', fileParam);
+        showAnalysisPanel();
+    }
+});
+
+function uploadFile() {
+    const fileInput = document.getElementById('log-file');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showAlert('Please select a file to upload.', 'warning');
+        return;
+    }
+    
+    if (!file.name.toLowerCase().endsWith('.log') && !file.name.toLowerCase().endsWith('.txt')) {
+        showAlert('Please select a .log or .txt file.', 'warning');
+        return;
+    }
+    
+    if (file.size > 16 * 1024 * 1024) {
+        showAlert('File size exceeds 16MB limit.', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const progressContainer = document.getElementById('upload-progress');
+    const progressBar = progressContainer.querySelector('.progress-bar');
+    
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    
+    fetch('/api/log/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            progressBar.style.width = '100%';
+            return response.json();
+        }
+        throw new Error('Upload failed');
+    })
+    .then(data => {
+        if (data.success) {
+            currentFilePath = data.filepath;
+            currentFileName = data.filename;
+            showUploadedFileInfo(data.filename, data.size, data.filepath);
+            showAnalysisPanel();
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.error || 'Upload failed', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Upload error: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+        }, 1000);
+    });
+}
+
+function showUploadedFileInfo(filename, size, filepath) {
+    document.getElementById('uploaded-filename').textContent = filename;
+    document.getElementById('uploaded-filesize').textContent = formatFileSize(size);
+    document.getElementById('uploaded-filepath').textContent = filepath;
+    document.getElementById('uploaded-file-info').style.display = 'block';
+}
+
+function showAnalysisPanel() {
+    document.getElementById('analysis-panel').style.display = 'block';
+}
+
+function analyzeLog() {
+    if (!currentFilePath) {
+        showAlert('Please upload a file first.', 'warning');
+        return;
+    }
+    
+    const operation = document.querySelector('input[name="operation"]:checked').value;
+    const keyword = document.getElementById('keyword').value.trim();
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const limit = parseInt(document.getElementById('limit').value) || 100;
+    
+    let analysisData = {
+        filepath: currentFilePath,
+        operation: operation,
+        keyword: keyword || null,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        limit: limit
+    };
+    
+    // Add advanced search parameters if needed
+    if (operation === 'search') {
+        const keywords = document.getElementById('keywords').value.trim();
+        if (!keywords) {
+            showAlert('Please enter keywords for advanced search.', 'warning');
+            return;
+        }
+        
+        analysisData.keywords = keywords.split(',').map(k => k.trim()).filter(k => k);
+        analysisData.operator = document.getElementById('operator').value;
+        analysisData.case_sensitive = document.getElementById('case-sensitive').checked;
+    }
+    
+    if (operation === 'drill-down') {
+        analysisData.limit_per_program = 10;
+    }
+    
+    // Show loading state
+    showResultsPanel();
+    const startTime = Date.now();
+    
+    const analyzeBtn = document.getElementById('analyze-btn');
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    
+    fetch('/api/log/analyze', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(analysisData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        const endTime = Date.now();
+        const processingTime = endTime - startTime;
+        
+        if (data.success) {
+            displayResults(data, processingTime);
+            showAlert('Analysis completed successfully!', 'success');
+        } else {
+            showAlert(data.error || 'Analysis failed', 'danger');
+            document.getElementById('results-content').innerHTML = 
+                '<div class="alert alert-danger">Analysis failed: ' + (data.error || 'Unknown error') + '</div>';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Analysis error: ' + error.message, 'danger');
+        document.getElementById('results-content').innerHTML = 
+            '<div class="alert alert-danger">Analysis error: ' + error.message + '</div>';
+    })
+    .finally(() => {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = '<i class="fas fa-play"></i> Run Analysis';
+    });
+}
+
+function showResultsPanel() {
+    document.getElementById('results-panel').style.display = 'block';
+    document.getElementById('results-content').innerHTML = `
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+            <p class="mt-2 text-muted">Processing...</p>
+        </div>
+    `;
+}
+
+function displayResults(data, processingTime) {
+    const operationType = document.getElementById('operation-type');
+    const processingTimeBadge = document.getElementById('processing-time');
+    const resultsContent = document.getElementById('results-content');
+    
+    operationType.textContent = data.operation.toUpperCase();
+    processingTimeBadge.textContent = `${processingTime}ms`;
+    
+    let html = '';
+    
+    // Display filters applied
+    if (data.filters) {
+        html += '<div class="alert alert-info"><strong>Filters Applied:</strong><ul class="mb-0">';
+        if (data.filters.keyword) html += `<li>Keyword: ${data.filters.keyword}</li>`;
+        if (data.filters.start_date) html += `<li>Start Date: ${data.filters.start_date}</li>`;
+        if (data.filters.end_date) html += `<li>End Date: ${data.filters.end_date}</li>`;
+        if (data.filters.limit) html += `<li>Limit: ${data.filters.limit}</li>`;
+        html += '</ul></div>';
+    }
+    
+    // Display results based on operation type
+    if (data.operation === 'summarize') {
+        html += `<div class="card"><div class="card-body"><pre class="mb-0">${data.result.summary}</pre></div></div>`;
+    } 
+    else if (data.operation === 'filter') {
+        html += `
+            <div class="mb-3">
+                <span class="badge bg-primary">Total Lines: ${data.result.total_lines}</span>
+                <span class="badge bg-secondary">Showing: ${data.result.returned_lines}</span>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Matching Log Lines</h6>
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    <pre class="mb-0">${data.result.lines.join('\n')}</pre>
+                </div>
+            </div>
+        `;
+    }
+    else if (data.operation === 'drill-down') {
+        html += `
+            <div class="mb-3">
+                <span class="badge bg-primary">Total Programs: ${data.result.total_programs}</span>
+            </div>
+        `;
+        
+        const programs = data.result.programs;
+        for (const [program, info] of Object.entries(programs)) {
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            ${program} 
+                            <span class="badge bg-secondary">${info.total_entries} entries</span>
+                        </h6>
+                    </div>
+                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                        <pre class="mb-0">${info.entries.join('\n')}</pre>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    else if (data.operation === 'search') {
+        html += `
+            <div class="mb-3">
+                <span class="badge bg-primary">Total Matches: ${data.result.total_lines}</span>
+                <span class="badge bg-secondary">Showing: ${data.result.returned_lines}</span>
+                <span class="badge bg-info">Keywords: ${data.result.search_params.keywords.join(', ')}</span>
+                <span class="badge bg-warning">Operator: ${data.result.search_params.operator}</span>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Search Results</h6>
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    <pre class="mb-0">${data.result.lines.join('\n')}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    resultsContent.innerHTML = html;
+}
+
+function clearResults() {
+    document.getElementById('results-panel').style.display = 'none';
+}
+
+function formatFileSize(bytes) {
+    if (typeof bytes === 'string') return bytes;
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alert-container');
+    const alertId = 'alert-' + Date.now();
+    
+    const alertHtml = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    
+    alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        const alert = document.getElementById(alertId);
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

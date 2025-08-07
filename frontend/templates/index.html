@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Log Analyzer Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Log Analyzer - Feature Demo Dashboard</h1>
+        <p class="lead">Welcome to the comprehensive log analysis tool. This interface demonstrates all available features across three main modules.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-info-circle"></i> System Status</h5>
+            <div id="system-status">
+                <div class="d-flex justify-content-between">
+                    <span>Service Status:</span>
+                    <span id="service-status" class="badge bg-success">Loading...</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Version:</span>
+                    <span id="service-version" class="badge bg-secondary">Loading...</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Available Modules:</span>
+                    <span id="available-modules" class="badge bg-primary">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- SSH Module Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-server"></i> SSH File Browser
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Connect to remote servers, browse directories, and download log files for analysis.</p>
+                <h6>Features:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> SSH Connection Management</li>
+                    <li><i class="fas fa-check text-success"></i> Remote Directory Browsing</li>
+                    <li><i class="fas fa-check text-success"></i> File Download</li>
+                    <li><i class="fas fa-check text-success"></i> Session Management</li>
+                </ul>
+                <div class="mt-3">
+                    <strong>Endpoints Demo:</strong>
+                    <small class="text-muted d-block">POST /ssh/connect, GET /ssh/list, POST /ssh/change, POST /ssh/download, POST /ssh/disconnect</small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('ssh_interface') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-right"></i> Try SSH Browser
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Analysis Module Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-alt"></i> Log Analysis
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Upload and analyze log files with powerful filtering, summarization, and search capabilities.</p>
+                <h6>Features:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> File Upload & Processing</li>
+                    <li><i class="fas fa-check text-success"></i> Keyword Filtering</li>
+                    <li><i class="fas fa-check text-success"></i> Date Range Analysis</li>
+                    <li><i class="fas fa-check text-success"></i> Program Drill-down</li>
+                    <li><i class="fas fa-check text-success"></i> Advanced Multi-keyword Search</li>
+                    <li><i class="fas fa-check text-success"></i> Log Summarization</li>
+                </ul>
+                <div class="mt-3">
+                    <strong>Endpoints Demo:</strong>
+                    <small class="text-muted d-block">POST /log/upload, POST /log/filter, POST /log/summarize, POST /log/drill-down, POST /log/search</small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('log_interface') }}" class="btn btn-success">
+                    <i class="fas fa-arrow-right"></i> Try Log Analysis
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- SQL Module Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-database"></i> SQL Database
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Import log data into SQLite database and execute complex SQL queries for advanced analysis.</p>
+                <h6>Features:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> Log File Import</li>
+                    <li><i class="fas fa-check text-success"></i> SQL Query Execution</li>
+                    <li><i class="fas fa-check text-success"></i> Table Management</li>
+                    <li><i class="fas fa-check text-success"></i> Schema Inspection</li>
+                    <li><i class="fas fa-check text-success"></i> Database Statistics</li>
+                </ul>
+                <div class="mt-3">
+                    <strong>Endpoints Demo:</strong>
+                    <small class="text-muted d-block">POST /sql/import, POST /sql/query, GET /sql/tables, GET /sql/schema, DELETE /sql/table</small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('sql_interface') }}" class="btn btn-warning text-dark">
+                    <i class="fas fa-arrow-right"></i> Try SQL Module
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-rocket"></i> Quick Start Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>1. SSH File Access</h6>
+                        <p class="small">Connect to a remote server to browse and download log files directly from the SSH interface.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>2. Log Analysis</h6>
+                        <p class="small">Upload log files and use powerful analysis tools including filtering, summarization, and advanced search.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>3. SQL Queries</h6>
+                        <p class="small">Import logs into a database and run complex SQL queries for deep insights and reporting.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> API Endpoints Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6 class="text-primary">SSH Module (5 endpoints)</h6>
+                        <ul class="list-unstyled small">
+                            <li>POST /ssh/connect</li>
+                            <li>GET /ssh/list</li>
+                            <li>POST /ssh/change</li>
+                            <li>POST /ssh/download</li>
+                            <li>POST /ssh/disconnect</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-success">Log Module (6 endpoints)</h6>
+                        <ul class="list-unstyled small">
+                            <li>POST /log/upload</li>
+                            <li>POST /log/filter</li>
+                            <li>POST /log/summarize</li>
+                            <li>POST /log/drill-down</li>
+                            <li>POST /log/batch-analyze</li>
+                            <li>POST /log/search</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-warning">SQL Module (6 endpoints)</h6>
+                        <ul class="list-unstyled small">
+                            <li>POST /sql/import</li>
+                            <li>POST /sql/query</li>
+                            <li>GET /sql/tables</li>
+                            <li>GET /sql/schema</li>
+                            <li>DELETE /sql/table</li>
+                            <li>POST /sql/upload-and-import</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <strong>Total: 18 API endpoints</strong> demonstrating comprehensive log analysis capabilities.
+                        Plus health monitoring with GET /health and metrics with GET /metrics.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load system status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemStatus();
+});
+
+function loadSystemStatus() {
+    fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('service-status').textContent = data.status;
+            document.getElementById('service-status').className = data.status === 'healthy' ? 'badge bg-success' : 'badge bg-danger';
+            
+            document.getElementById('service-version').textContent = data.version;
+            document.getElementById('available-modules').textContent = data.modules.join(', ');
+        })
+        .catch(error => {
+            console.error('Error loading system status:', error);
+            document.getElementById('service-status').textContent = 'Error';
+            document.getElementById('service-status').className = 'badge bg-danger';
+        });
+}
+</script>
+{% endblock %}
