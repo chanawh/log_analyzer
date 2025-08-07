@@ -61,5 +61,26 @@ class TestFilterLogLines(unittest.TestCase):
             ]
         )
 
+    def test_regex_partial_word(self):
+        # Case-insensitive regex for any word starting with 'sta'
+        lines = filter_log_lines(self.test_log, keyword=r"(?i)\bsta\w+")
+        self.assertIn("2022-01-01 info: Started", lines)
+
+    def test_regex_case_insensitive(self):
+        # Case-insensitive search for 'started'
+        lines = filter_log_lines(self.test_log, keyword=r"(?i)started")
+        self.assertIn("2022-01-01 info: Started", lines)
+
+    def test_regex_multiple_keywords(self):
+        # Match 'Started' or 'Failed'
+        lines = filter_log_lines(self.test_log, keyword=r"Started|Failed")
+        self.assertIn("2022-01-01 info: Started", lines)
+        self.assertIn("2022-01-02 error: Failed", lines)
+
+    def test_regex_invalid_pattern(self):
+        # Invalid regex pattern should return empty list
+        lines = filter_log_lines(self.test_log, keyword=r"*invalid[")
+        self.assertEqual(lines, [])
+
 if __name__ == '__main__':
     unittest.main()
