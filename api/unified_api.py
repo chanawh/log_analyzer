@@ -9,10 +9,17 @@ from werkzeug.utils import secure_filename
 from core.ssh_browser import SSHBrowser
 from core.log_utils import filter_log_lines, summarize_log, drill_down_by_program
 from core.sql_utils import get_database, close_database
+from core.metrics import (
+    setup_metrics, track_requests, track_ssh_connection, track_ssh_session_change,
+    track_log_processing, track_sql_query, track_upload, get_metrics
+)
 
 app = Flask(__name__)
-app.secret_key = 'supersecret'  # Needed for session management
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'supersecret')  # Use environment variable
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
+
+# Initialize metrics
+setup_metrics()
 
 # Store browser instances per session and uploaded files
 ssh_sessions = {}
@@ -38,8 +45,15 @@ def sanitize_table_name(name: str) -> str:
         sanitized = 'table_' + sanitized
     return sanitized or 'default_table'
 
+# Metrics endpoint
+@app.route('/metrics', methods=['GET'])
+def metrics():
+    """Prometheus metrics endpoint."""
+    return get_metrics()
+
 # Health check endpoint
 @app.route('/health', methods=['GET'])
+@track_requests
 def health_check():
     """Health check endpoint for the entire API."""
     return jsonify({
@@ -79,6 +93,7 @@ def health_check():
 
 # SSH API endpoints
 @app.route('/ssh/connect', methods=['POST'])
+@track_requests
 def connect_ssh():
     """Connect to SSH server."""
     data = request.json
@@ -86,6 +101,7 @@ def connect_ssh():
     username = data.get('username')
     password = data.get('password')
     if not host or not username or not password:
+        track_ssh_connection('failed')
         return jsonify({'error': 'Missing credentials'}), 400
     browser = SSHBrowser()
     try:
@@ -93,11 +109,15 @@ def connect_ssh():
         sid = os.urandom(16).hex()
         ssh_sessions[sid] = browser
         session['sid'] = sid
+        track_ssh_connection('success')
+        track_ssh_session_change(1)
         return jsonify({'message': 'Connected', 'current_path': browser.current_path})
     except Exception as e:
+        track_ssh_connection('failed')
         return jsonify({'error': str(e)}), 500
 
 @app.route('/ssh/list', methods=['GET'])
+@track_requests
 def list_dir():
     """List directory contents on SSH server."""
     browser = get_browser()

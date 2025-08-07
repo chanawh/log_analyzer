@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: log-analyzer
+  namespace: log-analyzer
+  labels:
+    app.kubernetes.io/name: log-analyzer
+    app.kubernetes.io/component: serviceaccount
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: log-analyzer-role
+  namespace: log-analyzer
+  labels:
+    app.kubernetes.io/name: log-analyzer
+    app.kubernetes.io/component: rbac
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: log-analyzer-rolebinding
+  namespace: log-analyzer
+  labels:
+    app.kubernetes.io/name: log-analyzer
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: log-analyzer
+  namespace: log-analyzer
+roleRef:
+  kind: Role
+  name: log-analyzer-role
+  apiGroup: rbac.authorization.k8s.io
