@@ -1,18 +1,29 @@
 # Log Analyzer API Documentation
 
-The Log Analyzer API provides both SSH file browsing and log analysis capabilities through RESTful endpoints.
+The Log Analyzer API provides SSH file browsing, log analysis, and AI-powered insights through RESTful endpoints with JWT authentication.
 
 ## Base URL
 ```
 http://localhost:5000
 ```
 
+## 🔐 Authentication
+
+Most endpoints require JWT authentication. First, register and login to get an access token.
+
+### Authentication Flow
+1. Register: `POST /auth/register`
+2. Login: `POST /auth/login` (returns JWT token)
+3. Use token in header: `Authorization: Bearer <token>`
+
 ## API Overview
 
-The API is divided into three main modules:
+The API is divided into five main modules:
+- **Authentication Module**: User management and JWT authentication
 - **SSH Module**: For remote file browsing and downloading
 - **Log Module**: For log file analysis and processing  
 - **SQL Module**: For database storage and SQL querying of log data
+- **AI Module**: For AI-powered log analysis and conversational interface
 
 ## General Endpoints
 
@@ -38,11 +49,137 @@ Returns the API status and available endpoints.
 }
 ```
 
+## 🔐 Authentication Module Endpoints
+
+### Register User
+```
+POST /auth/register
+```
+Register a new user account.
+
+**Request Body:**
+```json
+{
+  "username": "user123",
+  "password": "securepassword123",
+  "role": "user"  // Optional: "user" or "admin", defaults to "user"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "User created successfully",
+  "username": "user123",
+  "role": "user"
+}
+```
+
+### User Login
+```
+POST /auth/login
+```
+Authenticate user and get JWT access token.
+
+**Request Body:**
+```json
+{
+  "username": "user123",
+  "password": "securepassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "message": "Login successful",
+  "user": {
+    "username": "user123",
+    "role": "user",
+    "created_at": "2024-01-01T10:00:00"
+  }
+}
+```
+
+### Get User Profile
+```
+GET /auth/profile
+Authorization: Bearer <token>
+```
+Get current user's profile information.
+
+**Response:**
+```json
+{
+  "username": "user123",
+  "role": "user",
+  "created_at": "2024-01-01T10:00:00"
+}
+```
+
+### List Users (Admin Only)
+```
+GET /auth/users
+Authorization: Bearer <admin_token>
+```
+List all users (admin role required).
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "username": "user123",
+      "role": "user",
+      "created_at": "2024-01-01T10:00:00"
+    }
+  ]
+}
+```
+
+### Generate API Key
+```
+POST /auth/api-key
+Authorization: Bearer <token>
+```
+Generate an API key for programmatic access.
+
+**Response:**
+```json
+{
+  "api_key": "ak_1234567890abcdef",
+  "username": "user123",
+  "message": "API key generated successfully"
+}
+```
+
+### OAuth Login
+```
+GET /auth/oauth/<provider>
+```
+Initiate OAuth login with supported providers (google, github).
+
+**Response:**
+```json
+{
+  "auth_url": "https://accounts.google.com/o/oauth2/auth?..."
+}
+```
+
+### User Logout
+```
+POST /auth/logout
+Authorization: Bearer <token>
+```
+Logout user (invalidates current session).
+
 ## SSH Module Endpoints
 
 ### Connect to SSH Server
 ```
 POST /ssh/connect
+Authorization: Bearer <token>
 ```
 Establishes an SSH connection to a remote server.
 
@@ -568,7 +705,254 @@ CREATE TABLE table_name (
 
 ## Security
 
+- **JWT Authentication**: All protected endpoints require valid JWT tokens
+- **Role-Based Access**: Admin-only endpoints restrict access based on user roles
 - SQL queries are restricted to SELECT statements only
 - Dangerous operations (DROP, DELETE, INSERT, UPDATE) are blocked
 - File uploads are limited to .log and .txt extensions
+- **API Rate Limiting**: Consider implementing rate limiting in production
+
+## 🤖 AI Module Endpoints
+
+### AI Health Check
+```
+GET /ai/health
+```
+Check the status of AI services and available providers.
+
+**Response:**
+```json
+{
+  "ai_service": "healthy",
+  "available_providers": ["openai", "anthropic"],
+  "default_provider": "openai",
+  "provider_count": 2
+}
+```
+
+### List AI Providers
+```
+GET /ai/providers
+Authorization: Bearer <token>
+```
+List available AI providers and their configuration status.
+
+**Response:**
+```json
+{
+  "available_providers": ["openai"],
+  "default_provider": "openai",
+  "provider_status": {
+    "openai": {
+      "available": true,
+      "configured": true,
+      "is_default": true
+    },
+    "anthropic": {
+      "available": false,
+      "configured": false,
+      "is_default": false
+    }
+  },
+  "total_available": 1
+}
+```
+
+### AI Log Analysis
+```
+POST /ai/analyze
+Authorization: Bearer <token>
+```
+Analyze logs using AI for intelligent insights.
+
+**Request Body:**
+```json
+{
+  "logs": "log content here...",  // Optional: direct log content
+  "filepath": "/path/to/logfile", // Optional: file path (alternative to logs)
+  "provider": "openai",           // Optional: AI provider
+  "context": "Production server logs showing errors",
+  "analysis_type": "error"        // Optional: error, performance, security, trend, general
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "analysis": "AI-generated analysis of the logs...",
+  "provider": "openai",
+  "analysis_type": "error",
+  "timestamp": "2024-01-01T10:00:00",
+  "user": "username"
+}
+```
+
+### Conversational AI
+```
+POST /ai/chat
+Authorization: Bearer <token>
+```
+Chat interface for natural language queries about logs.
+
+**Request Body:**
+```json
+{
+  "message": "What are the main issues in these logs?",
+  "provider": "openai",          // Optional
+  "context": ["previous", "conversation"]  // Optional
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "response": "AI response to your question...",
+  "provider": "openai",
+  "user": "username",
+  "timestamp": "2024-01-01T10:00:00"
+}
+```
+
+### Smart Search
+```
+POST /ai/smart-search
+Authorization: Bearer <token>
+```
+Search logs using natural language descriptions.
+
+**Request Body:**
+```json
+{
+  "filepath": "/path/to/logfile",
+  "query": "Find all security-related events and performance problems",
+  "provider": "openai"           // Optional
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "query": "Find all security-related events and performance problems",
+  "results": "AI-generated search results and analysis...",
+  "provider": "openai",
+  "user": "username"
+}
+```
+
+### AI-Enhanced Summary
+```
+POST /ai/summary
+Authorization: Bearer <token>
+```
+Generate AI-enhanced log summaries with focus areas.
+
+**Request Body:**
+```json
+{
+  "filepath": "/path/to/logfile",
+  "provider": "openai",          // Optional
+  "focus_areas": ["errors", "performance", "security"]  // Optional
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "traditional_summary": "Standard log summary...",
+  "ai_enhanced_summary": "AI-enhanced analysis...",
+  "focus_areas": ["errors", "performance", "security"],
+  "provider": "openai",
+  "user": "username"
+}
+```
+
+## Error Responses
+
+All endpoints may return the following error responses:
+
+### Authentication Errors
+```json
+{
+  "message": "Authorization token is required"
+}
+```
+**Status Code:** 401
+
+```json
+{
+  "message": "Invalid token"
+}
+```
+**Status Code:** 401
+
+```json
+{
+  "message": "Access denied. admin role required."
+}
+```
+**Status Code:** 403
+
+### AI Service Errors
+```json
+{
+  "success": false,
+  "message": "No LLM provider available",
+  "available_providers": []
+}
+```
+**Status Code:** 500
+
+### General Errors
+```json
+{
+  "message": "Request must be JSON"
+}
+```
+**Status Code:** 400
+
+## Configuration
+
+### Environment Variables
+Create a `.env` file with the following variables:
+
+```bash
+# Flask Configuration
+FLASK_SECRET_KEY=your-secret-key
+JWT_SECRET_KEY=your-jwt-secret
+
+# AI Provider API Keys (Optional)
+OPENAI_API_KEY=your-openai-key
+ANTHROPIC_API_KEY=your-anthropic-key
+
+# OAuth Configuration (Optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+```
+
+## Getting Started Example
+
+```bash
+# 1. Register a user
+curl -X POST http://localhost:5000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "testpass123"}'
+
+# 2. Login to get token
+TOKEN=$(curl -X POST http://localhost:5000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "testpass123"}' \
+  | jq -r '.access_token')
+
+# 3. Use AI analysis
+curl -X POST http://localhost:5000/ai/analyze \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"logs": "2024-01-01 ERROR: Connection failed", "analysis_type": "error"}'
+```
 - Maximum file size: 16MB
