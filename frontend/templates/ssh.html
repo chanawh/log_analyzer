@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}SSH File Browser - Log Analyzer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-server"></i> SSH File Browser
+            <small class="text-muted">Remote file access and download</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Connection Panel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-plug"></i> SSH Connection
+                    <span id="connection-status" class="badge bg-secondary ms-2">Disconnected</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="connection-form">
+                    <div class="col-md-3">
+                        <label for="ssh-host" class="form-label">Host</label>
+                        <input type="text" class="form-control" id="ssh-host" placeholder="server.example.com" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ssh-username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="ssh-username" placeholder="username" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ssh-password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="ssh-password" placeholder="password" required>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary me-2" id="connect-btn" onclick="connectSSH()">
+                            <i class="fas fa-sign-in-alt"></i> Connect
+                        </button>
+                        <button type="button" class="btn btn-danger" id="disconnect-btn" onclick="disconnectSSH()" style="display: none;">
+                            <i class="fas fa-sign-out-alt"></i> Disconnect
+                        </button>
+                    </div>
+                </div>
+                <div id="connection-info" style="display: none;" class="mt-3">
+                    <div class="alert alert-success">
+                        <strong>Connected to:</strong> <span id="connected-host"></span><br>
+                        <strong>Current Path:</strong> <span id="current-path"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Browser Panel -->
+<div class="row mb-4" id="browser-panel" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-folder-open"></i> Remote File Browser
+                </h5>
+                <div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="goUpDirectory()">
+                        <i class="fas fa-level-up-alt"></i> Parent Directory
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm" onclick="refreshDirectory()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Current Path:</strong> 
+                    <span id="current-directory" class="font-monospace bg-light p-1 rounded"></span>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Name</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="file-list">
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Downloads Panel -->
+<div class="row" id="downloads-panel" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-download"></i> Downloaded Files
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="downloads-list">
+                    <p class="text-muted">No files downloaded yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Messages -->
+<div id="alert-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let isConnected = false;
+let currentPath = '';
+let downloadedFiles = [];
+
+// Initialize page state
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if already connected (from session)
+    {% if is_connected %}
+        isConnected = true;
+        currentPath = '{{ current_path }}';
+        updateConnectionStatus();
+        loadDirectoryContents();
+    {% endif %}
+});
+
+function connectSSH() {
+    const host = document.getElementById('ssh-host').value.trim();
+    const username = document.getElementById('ssh-username').value.trim();
+    const password = document.getElementById('ssh-password').value.trim();
+    
+    if (!host || !username || !password) {
+        showAlert('Please fill in all connection fields.', 'warning');
+        return;
+    }
+    
+    const connectBtn = document.getElementById('connect-btn');
+    connectBtn.disabled = true;
+    connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+    
+    fetch('/api/ssh/connect', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            host: host,
+            username: username,
+            password: password
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            isConnected = true;
+            currentPath = data.current_path;
+            document.getElementById('connected-host').textContent = `${username}@${host}`;
+            updateConnectionStatus();
+            loadDirectoryContents();
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.error || 'Connection failed', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Connection error: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        connectBtn.disabled = false;
+        connectBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Connect';
+    });
+}
+
+function disconnectSSH() {
+    fetch('/api/ssh/disconnect', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        isConnected = false;
+        currentPath = '';
+        updateConnectionStatus();
+        showAlert(data.message, 'info');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Disconnect error: ' + error.message, 'danger');
+    });
+}
+
+function updateConnectionStatus() {
+    const statusBadge = document.getElementById('connection-status');
+    const connectionInfo = document.getElementById('connection-info');
+    const browserPanel = document.getElementById('browser-panel');
+    const connectBtn = document.getElementById('connect-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    
+    if (isConnected) {
+        statusBadge.textContent = 'Connected';
+        statusBadge.className = 'badge bg-success ms-2';
+        connectionInfo.style.display = 'block';
+        browserPanel.style.display = 'block';
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+        document.getElementById('current-path').textContent = currentPath;
+    } else {
+        statusBadge.textContent = 'Disconnected';
+        statusBadge.className = 'badge bg-secondary ms-2';
+        connectionInfo.style.display = 'none';
+        browserPanel.style.display = 'none';
+        connectBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'none';
+    }
+}
+
+function loadDirectoryContents() {
+    if (!isConnected) return;
+    
+    const fileList = document.getElementById('file-list');
+    fileList.innerHTML = '<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+    
+    fetch('/api/ssh/list')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentPath = data.current_path;
+            document.getElementById('current-directory').textContent = currentPath;
+            displayDirectoryContents(data.items);
+        } else {
+            showAlert(data.error || 'Failed to load directory contents', 'danger');
+            fileList.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Failed to load directory</td></tr>';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error loading directory: ' + error.message, 'danger');
+        fileList.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading directory</td></tr>';
+    });
+}
+
+function displayDirectoryContents(items) {
+    const fileList = document.getElementById('file-list');
+    
+    if (items.length === 0) {
+        fileList.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Directory is empty</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    items.forEach(item => {
+        const icon = item.is_dir ? 'fas fa-folder text-warning' : 'fas fa-file text-primary';
+        const typeText = item.is_dir ? 'Directory' : 'File';
+        const actions = item.is_dir 
+            ? `<button class="btn btn-sm btn-outline-primary" onclick="changeDirectory('${item.name}')">
+                 <i class="fas fa-folder-open"></i> Open
+               </button>`
+            : `<button class="btn btn-sm btn-outline-success" onclick="downloadFile('${item.name}')">
+                 <i class="fas fa-download"></i> Download
+               </button>`;
+        
+        html += `
+            <tr>
+                <td><i class="${icon}"></i> ${typeText}</td>
+                <td class="font-monospace">${item.name}</td>
+                <td>${actions}</td>
+            </tr>
+        `;
+    });
+    
+    fileList.innerHTML = html;
+}
+
+function changeDirectory(dirname) {
+    fetch('/api/ssh/change', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            subdir: dirname
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentPath = data.current_path;
+            loadDirectoryContents();
+        } else {
+            showAlert(data.error || 'Failed to change directory', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error changing directory: ' + error.message, 'danger');
+    });
+}
+
+function goUpDirectory() {
+    changeDirectory('..');
+}
+
+function refreshDirectory() {
+    loadDirectoryContents();
+}
+
+function downloadFile(filename) {
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+    
+    fetch('/api/ssh/download', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            filename: filename
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            downloadedFiles.push({
+                filename: filename,
+                local_path: data.local_path,
+                timestamp: new Date().toLocaleString()
+            });
+            updateDownloadsList();
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.error || 'Download failed', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Download error: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-download"></i> Download';
+    });
+}
+
+function updateDownloadsList() {
+    const downloadsPanel = document.getElementById('downloads-panel');
+    const downloadsList = document.getElementById('downloads-list');
+    
+    if (downloadedFiles.length === 0) {
+        downloadsPanel.style.display = 'none';
+        return;
+    }
+    
+    downloadsPanel.style.display = 'block';
+    
+    let html = '<div class="list-group">';
+    downloadedFiles.forEach((file, index) => {
+        html += `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">${file.filename}</h6>
+                    <p class="mb-1 text-muted small">Downloaded: ${file.timestamp}</p>
+                    <small class="text-muted">Local path: ${file.local_path}</small>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-primary" onclick="analyzeDownloadedFile('${file.local_path}', '${file.filename}')">
+                        <i class="fas fa-chart-line"></i> Analyze
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    downloadsList.innerHTML = html;
+}
+
+function analyzeDownloadedFile(filepath, filename) {
+    // Redirect to log analysis page with the file
+    const params = new URLSearchParams();
+    params.set('file', filepath);
+    params.set('name', filename);
+    window.location.href = '/logs?' + params.toString();
+}
+
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alert-container');
+    const alertId = 'alert-' + Date.now();
+    
+    const alertHtml = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    
+    alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        const alert = document.getElementById(alertId);
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}
