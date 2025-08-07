@@ -1,0 +1,74 @@
+groups:
+  - name: log-analyzer-alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: (rate(container_cpu_usage_seconds_total{pod=~".*log-analyzer.*"}[5m]) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Pod {{ $labels.pod }} CPU usage is above 80% for more than 5 minutes"
+
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes{pod=~".*log-analyzer.*"} / container_spec_memory_limit_bytes{pod=~".*log-analyzer.*"} * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Pod {{ $labels.pod }} memory usage is above 90% for more than 5 minutes"
+
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total{pod=~".*log-analyzer.*"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.pod }} is restarting frequently"
+
+      - alert: ServiceDown
+        expr: up{job="log-analyzer"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Log Analyzer service is down"
+          description: "Log Analyzer service has been down for more than 2 minutes"
+
+      - alert: HighErrorRate
+        expr: (rate(flask_http_request_exceptions_total[5m]) / rate(flask_http_request_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 10% for more than 5 minutes"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(flask_http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is above 2 seconds for more than 5 minutes"
+
+      - alert: DiskSpaceRunningOut
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space running out"
+          description: "Disk usage is above 85% on {{ $labels.instance }}"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis service is down"
+          description: "Redis service has been down for more than 2 minutes"

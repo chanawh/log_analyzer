@@ -4,3 +4,5 @@ redis
 prometheus-client
 requests
 gunicorn
+click
+pyyaml

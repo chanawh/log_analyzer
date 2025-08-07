@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "log-analyzer.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "log-analyzer.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "log-analyzer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "log-analyzer.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "log-analyzer.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "log-analyzer.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          env:
+            - name: FLASK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "log-analyzer.fullname" . }}-secret
+                  key: flask-secret-key
+          envFrom:
+            - configMapRef:
+                name: {{ include "log-analyzer.fullname" . }}-config
+          {{- if .Values.healthcheck.enabled }}
+          livenessProbe:
+            {{- toYaml .Values.healthcheck.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.healthcheck.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.uploads.enabled }}
+            - name: upload-storage
+              mountPath: {{ .Values.config.uploadFolder }}
+            {{- end }}
+            {{- if .Values.persistence.logs.enabled }}
+            - name: log-storage
+              mountPath: /app/logs
+            {{- end }}
+      volumes:
+        {{- if .Values.persistence.uploads.enabled }}
+        - name: upload-storage
+          persistentVolumeClaim:
+            claimName: {{ include "log-analyzer.fullname" . }}-upload-pvc
+        {{- end }}
+        {{- if .Values.persistence.logs.enabled }}
+        - name: log-storage
+          persistentVolumeClaim:
+            claimName: {{ include "log-analyzer.fullname" . }}-logs-pvc
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
