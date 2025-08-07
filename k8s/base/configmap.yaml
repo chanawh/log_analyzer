@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-analyzer-config
+  namespace: log-analyzer
+  labels:
+    app.kubernetes.io/name: log-analyzer
+    app.kubernetes.io/component: configmap
+data:
+  FLASK_ENV: "production"
+  PYTHONPATH: "/app"
+  MAX_CONTENT_LENGTH: "16777216"  # 16MB
+  UPLOAD_FOLDER: "/app/uploads"
+  LOG_LEVEL: "INFO"
+  REDIS_URL: "redis://redis-service:6379/0"

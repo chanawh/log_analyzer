@@ -1,0 +1,20 @@
+apiVersion: v2
+name: log-analyzer
+description: A Helm chart for Log Analyzer - comprehensive log analysis tool with SSH, SQL, and REST API capabilities
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/chanawh/log_analyzer
+sources:
+  - https://github.com/chanawh/log_analyzer
+maintainers:
+  - name: Log Analyzer Team
+    email: support@log-analyzer.io
+keywords:
+  - log-analysis
+  - ssh
+  - sql
+  - monitoring
+  - observability
+annotations:
+  category: Analytics

@@ -1,2 +1,6 @@
 paramiko
 flask
+redis
+prometheus-client
+requests
+gunicorn

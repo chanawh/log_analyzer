@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: log-analyzer-development
+
+resources:
+- ../../base
+
+patchesStrategicMerge:
+- deployment-patch.yaml
+- hpa-patch.yaml
+
+configMapGenerator:
+- name: log-analyzer-config
+  behavior: merge
+  literals:
+  - LOG_LEVEL=DEBUG
+  - FLASK_ENV=development
+
+images:
+- name: log-analyzer
+  newTag: dev
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
