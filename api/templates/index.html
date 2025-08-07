@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Log Analyzer WebUI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        .error { color: red; }
+        .summary { background: #f3f3f3; padding: 1em; border-radius: 5px; }
+        .grouped { margin-top: 2em; }
+    </style>
+</head>
+<body>
+    <h1>Log Analyzer WebUI</h1>
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        <label>Upload Log File:</label>
+        <input type="file" name="logfile" required><br><br>
+        <label>Keyword (regex):</label>
+        <input type="text" name="keyword"><br><br>
+        <label>Start Date (YYYY-MM-DD):</label>
+        <input type="text" name="start_date"><br><br>
+        <label>End Date (YYYY-MM-DD):</label>
+        <input type="text" name="end_date"><br><br>
+        <button type="submit">Analyze</button>
+    </form>
+    {% if summary %}
+        <div class="summary">
+            <h2>Summary</h2>
+            <pre>{{ summary }}</pre>
+        </div>
+        <h2>Matching Lines</h2>
+        <pre>{% for line in lines %}{{ line }}\n{% endfor %}</pre>
+        <div class="grouped">
+            <h2>Grouped by Program</h2>
+            {% for prog, entries in grouped.items() %}
+                <h3>{{ prog }} ({{ entries|length }} entries)</h3>
+                <ul>
+                {% for entry in entries[:5] %}
+                    <li>{{ entry }}</li>
+                {% endfor %}
+                {% if entries|length > 5 %}
+                    <li>...and {{ entries|length - 5 }} more</li>
+                {% endif %}
+                </ul>
+            {% endfor %}
+        </div>
+    {% endif %}
+</body>
+</html>
