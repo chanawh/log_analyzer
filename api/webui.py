@@ -1,13 +1,17 @@
 import sys
 import os
+import werkzeug
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request
 from pathlib import Path
 from core.log_utils import filter_log_lines, summarize_log, drill_down_by_program
 
 app = Flask(__name__)
 app.secret_key = "change_this_to_a_random_secret"
+
+UPLOAD_DIR = Path(os.path.dirname(__file__)) / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -19,8 +23,9 @@ def index():
         start_date = request.form.get("start_date", "").strip()
         end_date = request.form.get("end_date", "").strip()
         filepath = None
-        if file:
-            filepath = Path("uploaded_" + file.filename)
+        if file and file.filename:
+            safe_filename = werkzeug.utils.secure_filename(file.filename)
+            filepath = UPLOAD_DIR / f"uploaded_{safe_filename}"
             file.save(str(filepath))
         try:
             if filepath and filepath.exists():
