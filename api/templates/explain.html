@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Explain Log Entry</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>Log Explanation</h1>
+    <form method="post">
+        <label for="log_text">Log Entry:</label>
+        <textarea id="log_text" name="log_text" rows="4" style="width:100%;" required>{{ log_text }}</textarea>
+        <button type="submit">Explain</button>
+    </form>
+    {% if explanation %}
+    <div class="card mt-4">
+        <div class="card-header">LLM Explanation</div>
+        <div class="card-body">
+            <pre>{{ explanation }}</pre>
+        </div>
+    </div>
+    {% endif %}
+    <a href="/" class="btn btn-secondary mt-3">Back to Analyzer</a>
+</div>
+</body>
+</html>

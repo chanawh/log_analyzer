@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, render_template, request
 from pathlib import Path
 from core.log_utils import filter_log_lines, summarize_log, drill_down_by_program
+from core.llm_utils import explain_log_entry  # <-- NEW: import your LLM utility
 
 app = Flask(__name__)
 app.secret_key = "change_this_to_a_random_secret"
@@ -25,7 +26,7 @@ def index():
         keyword = request.form.get("keyword", "").strip()
         start_date = request.form.get("start_date", "").strip()
         end_date = request.form.get("end_date", "").strip()
-        levels = request.form.getlist("levels")  # <-- NEW: get selected log levels
+        levels = request.form.getlist("levels")  # <-- get selected log levels
         filepath = None
         if file and file.filename:
             safe_filename = werkzeug.utils.secure_filename(file.filename)
@@ -76,6 +77,15 @@ def index():
         error=error,
         chart_data=json.dumps(chart_data)
     )
+
+# NEW: Add route for LLM log explanation
+@app.route("/explain", methods=["POST"])
+def explain():
+    log_text = request.form.get("log_text", "")
+    explanation = ""
+    if log_text:
+        explanation = explain_log_entry(log_text)
+    return render_template("explain.html", log_text=log_text, explanation=explanation)
 
 if __name__ == "__main__":
     app.run(debug=True)
