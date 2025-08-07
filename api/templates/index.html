@@ -29,6 +29,15 @@
                     <input type="text" id="end_date" name="end_date" class="form-control">
                 </div>
             </div>
+            <div class="mb-3">
+                <label for="levels" class="form-label">Log Levels</label>
+                <select id="levels" name="levels" multiple class="form-control">
+                    <option value="INFO">INFO</option>
+                    <option value="ERROR">ERROR</option>
+                    <option value="WARN">WARN</option>
+                    <option value="DEBUG">DEBUG</option>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary">Analyze</button>
         </form>
         {% if error %}

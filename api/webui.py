@@ -25,6 +25,7 @@ def index():
         keyword = request.form.get("keyword", "").strip()
         start_date = request.form.get("start_date", "").strip()
         end_date = request.form.get("end_date", "").strip()
+        levels = request.form.getlist("levels")  # <-- NEW: get selected log levels
         filepath = None
         if file and file.filename:
             safe_filename = werkzeug.utils.secure_filename(file.filename)
@@ -32,8 +33,8 @@ def index():
             file.save(str(filepath))
         try:
             if filepath and filepath.exists():
-                summary = summarize_log(filepath, keyword, start_date, end_date)
-                lines = filter_log_lines(filepath, keyword, start_date, end_date)
+                summary = summarize_log(filepath, keyword, start_date, end_date, levels)  # <-- Pass levels
+                lines = filter_log_lines(filepath, keyword, start_date, end_date, levels) # <-- Pass levels
                 grouped = drill_down_by_program(filepath)
 
                 # Chart data extraction
