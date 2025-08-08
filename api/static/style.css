@@ -113,6 +113,17 @@ th, td {
 .table td {
     background: #f7fbfc;
 }
+/* Live log area for tail -f */
+#liveLogArea {
+    background: #222;
+    color: #eaf1fb;
+    font-family: monospace;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    height: 280px;
+    overflow-y: scroll;
+}
 @media (max-width: 700px) {
     .container {
         padding: 12px 4px;
@@ -124,7 +135,8 @@ th, td {
         padding: 12px 10px;
         font-size: 16px;
     }
-    pre {
+    pre,
+    #liveLogArea {
         padding: 12px;
         font-size: 13px;
     }

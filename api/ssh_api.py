@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from flask import Flask, request, jsonify, send_file, session
+from flask import Flask, Response, request, jsonify, send_file, session
 from core.ssh_browser import SSHBrowser
 
 app = Flask(__name__)
@@ -77,5 +77,32 @@ def disconnect():
         session.pop('sid', None)
     return jsonify({'message': 'Disconnected'})
 
+@app.route('/ssh/tail', methods=['POST'])
+def tail_log():
+    browser = get_browser()
+    if not browser:
+        return jsonify({'error': 'Not connected'}), 401
+    data = request.json
+    filename = data.get('filename')
+    if not filename:
+        return jsonify({'error': 'No filename provided'}), 400
+    
+    def generate():
+        transport = browser.ssh.get_transport()
+        channel = transport.open_session()
+        channel.exec_command(f"tail -F {filename}")
+        try:
+            while True:
+                if channel.recv_ready():
+                    chunk= channel.recv(4096)
+                    if not chunk:
+                        break
+                    yield chunk.decode()
+        except GeneratorExit:
+            pass
+        finally:
+            channel.close()
+    return Response(generate(), mimetype='text/plain')
+    
 if __name__ == '__main__':
     app.run(debug=True)

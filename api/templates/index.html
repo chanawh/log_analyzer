@@ -110,6 +110,27 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- SSH/Remote Log Tail Section -->
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark">Remote SSH Log Analysis</div>
+            <div class="card-body">
+                <!-- SSH Connect Form -->
+                <form id="sshConnectForm" class="mb-3">
+                    <input type="text" id="sshHost" placeholder="Host/IP" required class="form-control mb-2">
+                    <input type="text" id="sshUser" placeholder="Username" required class="form-control mb-2">
+                    <input type="password" id="sshPass" placeholder="Password" required class="form-control mb-2">
+                    <button type="submit" class="btn btn-warning">Connect SSH</button>
+                </form>
+                <div id="sshStatus" class="alert alert-info" style="display:none;"></div>
+                <!-- Remote Tail UI -->
+                <label for="remoteLogFilename">Remote Log File Path:</label>
+                <input type="text" id="remoteLogFilename" class="form-control mb-2" placeholder="/var/log/syslog">
+                <button id="startTailBtn" class="btn btn-warning mt-2">Start Live Tail</button>
+                <button id="stopTailBtn" class="btn btn-secondary mt-2" style="display:none;">Stop</button>
+                <pre id="liveLogArea" style="max-height: 300px; overflow-y: auto;"></pre>
+            </div>
+        </div>
     </div>
     <script>
     const chartData = JSON.parse('{{ chart_data|safe }}');
@@ -119,8 +140,9 @@
     const programLabels = Object.keys(programCounts);
     const programValues = Object.values(programCounts);
 
-    if (programLabels.length) {
-        new Chart(document.getElementById('programChart').getContext('2d'), {
+    const programCanvas = document.getElementById('programChart');
+    if (programLabels.length && programCanvas) {
+        new Chart(programCanvas.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: programLabels,
@@ -142,8 +164,9 @@
     const levelLabels = Object.keys(levelCounts);
     const levelValues = Object.values(levelCounts);
 
-    if (levelLabels.length) {
-        new Chart(document.getElementById('levelChart').getContext('2d'), {
+    const levelCanvas = document.getElementById('levelChart');
+    if (levelLabels.length && levelCanvas) {
+        new Chart(levelCanvas.getContext('2d'), {
             type: 'pie',
             data: {
                 labels: levelLabels,
@@ -166,8 +189,9 @@
     const dateLabels = Object.keys(dateCounts).sort();
     const dateValues = dateLabels.map(d => dateCounts[d]);
 
-    if (dateLabels.length) {
-        new Chart(document.getElementById('timeChart').getContext('2d'), {
+    const timeCanvas = document.getElementById('timeChart');
+    if (dateLabels.length && timeCanvas) {
+        new Chart(timeCanvas.getContext('2d'), {
             type: 'line',
             data: {
                 labels: dateLabels,
@@ -185,6 +209,70 @@
             }
         });
     }
+
+    // --- SSH Connect & Live Tail ---
+    let tailController = null;
+    let sshConnected = false;
+
+    document.getElementById('sshConnectForm').onsubmit = function(e) {
+        e.preventDefault();
+        fetch('/ssh/connect', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                host: document.getElementById('sshHost').value,
+                username: document.getElementById('sshUser').value,
+                password: document.getElementById('sshPass').value
+            })
+        }).then(r => r.json()).then(data => {
+            const statusDiv = document.getElementById('sshStatus');
+            if (data.message) {
+                statusDiv.textContent = 'SSH Connected: ' + data.current_path;
+                statusDiv.className = 'alert alert-success';
+                statusDiv.style.display = '';
+                sshConnected = true;
+            } else {
+                statusDiv.textContent = 'SSH Error: ' + (data.error || 'Unknown error');
+                statusDiv.className = 'alert alert-danger';
+                statusDiv.style.display = '';
+                sshConnected = false;
+            }
+        });
+    };
+
+    document.getElementById('startTailBtn').onclick = function() {
+        if (!sshConnected) {
+            alert('Please connect via SSH first.');
+            return;
+        }
+        const filename = document.getElementById('remoteLogFilename').value.trim();
+        if (!filename) return;
+        document.getElementById('liveLogArea').textContent = '';
+        document.getElementById('stopTailBtn').style.display = '';
+        tailController = new AbortController();
+        fetch('/ssh/tail', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({filename}),
+            signal: tailController.signal
+        }).then(resp => {
+            if (!resp.body) return;
+            const reader = resp.body.getReader();
+            function read() {
+                reader.read().then(({done, value}) => {
+                    if (done) return;
+                    document.getElementById('liveLogArea').textContent += new TextDecoder().decode(value);
+                    document.getElementById('liveLogArea').scrollTop = document.getElementById('liveLogArea').scrollHeight;
+                    read();
+                });
+            }
+            read();
+        });
+    };
+    document.getElementById('stopTailBtn').onclick = function() {
+        if (tailController) tailController.abort();
+        document.getElementById('stopTailBtn').style.display = 'none';
+    };
     </script>
 </body>
 </html>
