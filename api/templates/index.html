@@ -50,8 +50,32 @@
     </form>
     <div id="resultArea"></div>
 
-    <!-- SSH/Remote Log Tail Section (unchanged) -->
-    <!-- ... -->
+    <!-- SSH/Remote Log Tail Section (restored) -->
+    <div class="card mb-3">
+        <div class="card-header bg-warning text-dark">SSH Connect & Remote Log Tail</div>
+        <div class="card-body">
+            <form id="sshForm" class="mb-3">
+                <input type="text" id="ssh_host" placeholder="Host" class="form-control mb-2">
+                <input type="text" id="ssh_user" placeholder="Username" class="form-control mb-2">
+                <input type="password" id="ssh_pass" placeholder="Password" class="form-control mb-2">
+                <button type="submit" class="btn btn-warning">Connect</button>
+            </form>
+            <div id="sshStatus"></div>
+            <div id="remoteBrowser" style="display:none;">
+                <div class="mb-2">
+                    <span>Current Directory: <span id="sshCurrentPath"></span></span>
+                    <button id="sshGoUp" class="btn btn-sm btn-secondary ms-2">Up</button>
+                </div>
+                <ul id="sshFileList" class="list-group mb-2"></ul>
+                <input type="text" id="sshManualDir" placeholder="Enter directory path" class="form-control mb-2">
+                <button id="sshChangeDir" class="btn btn-sm btn-info mb-2">Go</button>
+                <input type="text" id="sshTailFile" placeholder="Filename to tail" class="form-control mb-2">
+                <button id="sshTailStart" class="btn btn-sm btn-success mb-2">Tail File</button>
+                <button id="sshDisconnect" class="btn btn-sm btn-danger mb-2">Disconnect</button>
+                <div id="liveLogArea"></div>
+            </div>
+        </div>
+    </div>
 </div>
 <script>
 let charts = {};
@@ -156,19 +180,56 @@ function renderResults(data) {
             options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
         });
     }
-    // Line chart
-    let timestamps = chart_data.timestamps || [];
-    let dateCounts = {};
-    timestamps.forEach(d => { dateCounts[d] = (dateCounts[d] || 0) + 1; });
-    let dateLabels = Object.keys(dateCounts).sort();
-    let dateValues = dateLabels.map(d => dateCounts[d]);
+    // Multi-series line chart by category/keyword
+    let timeSeries = chart_data.time_series || {};
     let timeCanvas = document.getElementById('timeChart');
-    if (dateLabels.length && timeCanvas) {
+    if (Object.keys(timeSeries).length && timeCanvas) {
+        // Collect all dates from all series
+        let allDates = new Set();
+        Object.values(timeSeries).forEach(dateMap => {
+            Object.keys(dateMap).forEach(d => allDates.add(d));
+        });
+        let dateLabels = Array.from(allDates).sort();
+        // Assign colors for up to 11 series (last for Total)
+        let colorList = [
+            '#007bff','#28a745','#dc3545','#ffc107','#17a2b8','#6f42c1','#fd7e14','#20c997','#e83e8c','#6610f2','#343a40'
+        ];
+        let datasets = Object.entries(timeSeries).map(([cat, dateMap], idx) => {
+            let isTotal = (cat === "Total");
+            return {
+                label: cat,
+                data: dateLabels.map(d => dateMap[d] || 0),
+                borderColor: colorList[idx % colorList.length],
+                fill: false,
+                tension: 0.3,
+                borderWidth: isTotal ? 4 : 2,
+                pointRadius: isTotal ? 3 : 2,
+                pointBackgroundColor: isTotal ? colorList[idx % colorList.length] : undefined,
+                borderDash: isTotal ? [8,4] : [],
+            }
+        });
         charts.time = new Chart(timeCanvas.getContext('2d'), {
             type: 'line',
-            data: { labels: dateLabels, datasets: [{ label: 'Entries', data: dateValues, borderColor: '#007bff', fill: false, tension: 0.3 }] },
-            options: { responsive: true, plugins: { legend: { display: false } } }
+            data: { labels: dateLabels, datasets: datasets },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: true, position: 'top' } }
+            }
         });
+    } else {
+        // fallback for single-series chart
+        let timestamps = chart_data.timestamps || [];
+        let dateCounts = {};
+        timestamps.forEach(d => { dateCounts[d] = (dateCounts[d] || 0) + 1; });
+        let dateLabels = Object.keys(dateCounts).sort();
+        let dateValues = dateLabels.map(d => dateCounts[d]);
+        if (dateLabels.length && timeCanvas) {
+            charts.time = new Chart(timeCanvas.getContext('2d'), {
+                type: 'line',
+                data: { labels: dateLabels, datasets: [{ label: 'Entries', data: dateValues, borderColor: '#007bff', fill: false, tension: 0.3 }] },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
     }
 }
 
@@ -256,6 +317,101 @@ document.getElementById("filterForm").onsubmit = function(e) {
 });
 document.getElementById("selected_category").addEventListener("change", runAnalysis);
 
+// --- SSH Section JS ---
+document.getElementById('sshForm').onsubmit = function(e) {
+    e.preventDefault();
+    let host = document.getElementById('ssh_host').value;
+    let user = document.getElementById('ssh_user').value;
+    let pass = document.getElementById('ssh_pass').value;
+    fetch('/ssh/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, username: user, password: pass })
+    }).then(r => r.json()).then(data => {
+        if (data.error) {
+            document.getElementById('sshStatus').innerText = data.error;
+            document.getElementById('remoteBrowser').style.display = 'none';
+        } else {
+            document.getElementById('sshStatus').innerText = data.message;
+            document.getElementById('remoteBrowser').style.display = '';
+            document.getElementById('sshCurrentPath').innerText = data.current_path;
+            updateSSHFileList();
+        }
+    });
+};
+
+function updateSSHFileList() {
+    fetch('/ssh/list').then(r => r.json()).then(data => {
+        let ul = document.getElementById('sshFileList');
+        ul.innerHTML = '';
+        if (data.items) {
+            data.items.forEach(item => {
+                let li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = item.is_dir ? '[DIR] ' + item.name : item.name;
+                li.onclick = function() {
+                    if (item.is_dir) {
+                        fetch('/ssh/change', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ subdir: item.name })
+                        }).then(r => r.json()).then(data => {
+                            document.getElementById('sshCurrentPath').innerText = data.current_path;
+                            updateSSHFileList();
+                        });
+                    }
+                };
+                ul.appendChild(li);
+            });
+        }
+    });
+}
+
+document.getElementById('sshGoUp').onclick = function() {
+    fetch('/ssh/change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subdir: '..' })
+    }).then(r => r.json()).then(data => {
+        document.getElementById('sshCurrentPath').innerText = data.current_path;
+        updateSSHFileList();
+    });
+};
+
+document.getElementById('sshChangeDir').onclick = function() {
+    let dir = document.getElementById('sshManualDir').value;
+    fetch('/ssh/change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subdir: dir })
+    }).then(r => r.json()).then(data => {
+        document.getElementById('sshCurrentPath').innerText = data.current_path;
+        updateSSHFileList();
+    });
+};
+
+document.getElementById('sshTailStart').onclick = function() {
+    let filename = document.getElementById('sshTailFile').value;
+    if (!filename) return;
+    let logArea = document.getElementById('liveLogArea');
+    logArea.innerText = '';
+    let evtSource = new EventSource(`/ssh/tail?filename=${encodeURIComponent(filename)}`);
+    evtSource.onmessage = function(e) {
+        logArea.innerText += e.data + "\n";
+        logArea.scrollTop = logArea.scrollHeight;
+    };
+    evtSource.onerror = function() {
+        evtSource.close();
+    };
+};
+
+document.getElementById('sshDisconnect').onclick = function() {
+    fetch('/ssh/disconnect', { method: 'POST' })
+        .then(r => r.json()).then(data => {
+            document.getElementById('sshStatus').innerText = data.message;
+            document.getElementById('remoteBrowser').style.display = 'none';
+        });
+};
 </script>
 </body>
 </html>

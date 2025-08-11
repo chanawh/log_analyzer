@@ -5,6 +5,7 @@ import json
 import time
 from uuid import uuid4
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from api.ssh_api import connect_ssh, list_dir, change_dir, download_file, disconnect, tail_log
 
 from flask import Flask, render_template, request, jsonify, send_file, Response, session
 from pathlib import Path
@@ -25,6 +26,12 @@ def get_browser():
     if sid and sid in ssh_sessions:
         return ssh_sessions[sid]
     return None
+
+# --- Add sorting helper ---
+import re
+def get_date(line):
+    m = re.search(r'(\d{4}-\d{2}-\d{2})', line)
+    return m.group(1) if m else ""
 
 @app.route("/", methods=["GET"])
 def index():
@@ -80,19 +87,38 @@ def analyze():
 
     try:
         lines = filter_log_lines(filepath, keyword, start_date, end_date, None)
-        import re
         ts_pattern = re.compile(r'(\d{4}-\d{2}-\d{2})')
         timestamps = []
         chart_counts = {}
         grouped = {}
         summary = ""
+
+        # ----------- time_series aggregation and total line ----------
+        time_series = {}
+        total_series = {}
+
+        def update_total(date_hist):
+            for d, v in date_hist.items():
+                total_series[d] = total_series.get(d, 0) + v
+
         if custom_categories:
             for cat, pat in custom_categories.items():
                 try:
                     matcher = re.compile(pat)
-                    grouped[cat] = [line for line in lines if matcher.search(line)]
+                    cat_lines = [line for line in lines if matcher.search(line)]
+                    grouped[cat] = cat_lines
+                    # Aggregate dates for each category
+                    date_hist = {}
+                    for line in cat_lines:
+                        ts = ts_pattern.search(line)
+                        if ts:
+                            d = ts.group(1)
+                            date_hist[d] = date_hist.get(d, 0) + 1
+                    time_series[cat] = date_hist
+                    update_total(date_hist)
                 except re.error:
                     grouped[cat] = []
+                    time_series[cat] = {}
             chart_counts = {cat: len(entries) for cat, entries in grouped.items()}
             for entries in grouped.values():
                 for line in entries:
@@ -117,18 +143,37 @@ def analyze():
             if category_names:
                 if not selected_category or selected_category not in category_names:
                     selected_category = category_names[0]
-                lines = grouped.get(selected_category, [])[:100]
+                # --- SORT lines before slicing ---
+                lines_sorted = sorted(grouped.get(selected_category, []), key=get_date)
+                lines = lines_sorted[:100]
         else:
             if keyword:
                 grouped = {"Keyword": lines}
                 chart_counts = {"Keyword": len(lines)}
+                # Aggregate per day for keyword
+                date_hist = {}
+                for line in lines:
+                    ts = ts_pattern.search(line)
+                    if ts:
+                        d = ts.group(1)
+                        date_hist[d] = date_hist.get(d, 0) + 1
+                        timestamps.append(d)
+                time_series["Keyword"] = date_hist
+                update_total(date_hist)
             else:
                 grouped = drill_down_by_program(filepath)
                 chart_counts = {prog: len(entries) for prog, entries in grouped.items()}
-            for line in lines:
-                ts = ts_pattern.search(line)
-                if ts:
-                    timestamps.append(ts.group(1))
+                # Aggregate per day for each program group
+                for prog, prog_lines in grouped.items():
+                    date_hist = {}
+                    for line in prog_lines:
+                        ts = ts_pattern.search(line)
+                        if ts:
+                            d = ts.group(1)
+                            date_hist[d] = date_hist.get(d, 0) + 1
+                            timestamps.append(d)
+                    time_series[prog] = date_hist
+                    update_total(date_hist)
             summary = f"📄 Total lines: {len(lines)}"
             if keyword:
                 summary += f"\n🔍 Filtered by keyword: '{keyword}'\n"
@@ -139,15 +184,23 @@ def analyze():
                 summary += f"🕒 Time range: {min(timestamps)} → {max(timestamps)}"
             if start_date or end_date:
                 summary += f"\n📅 Filtered by date range: {start_date or '...'} → {end_date or '...'}"
+            # --- SORT lines before slicing ---
+            lines_sorted = sorted(lines, key=get_date)
+            lines = lines_sorted[:100]
+
+        # Add total series as "Total"
+        if total_series:
+            time_series["Total"] = total_series
 
         chart_data = {
             "program_counts": chart_counts,
             "level_counts": chart_counts,
             "timestamps": timestamps,
+            "time_series": time_series,
         }
         response = {
             "summary": summary,
-            "lines": lines[:100],
+            "lines": lines,
             "grouped": {k: v[:5] for k, v in grouped.items()},
             "chart_data": chart_data,
             "categories_input": categories_input,
