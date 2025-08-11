@@ -30,14 +30,20 @@
                 </div>
             </div>
             <div class="mb-3">
-                <label for="levels" class="form-label">Log Levels</label>
-                <select id="levels" name="levels" multiple class="form-control">
-                    <option value="INFO">INFO</option>
-                    <option value="ERROR">ERROR</option>
-                    <option value="WARN">WARN</option>
-                    <option value="DEBUG">DEBUG</option>
+                <label for="categories" class="form-label">Custom Categories (one per line, format: <code>CategoryName:regex</code>)</label>
+                <textarea id="categories" name="categories" class="form-control" rows="4" placeholder="Example&#10;Errors:error|fail&#10;Starts:Started|Begin">{{ categories_input }}</textarea>
+                <small class="text-muted">Example: <code>Errors:error|fail</code> <code>Starts:Started|Begin</code></small>
+            </div>
+            {% if category_names %}
+            <div class="mb-3">
+                <label for="selected_category" class="form-label">Matching Lines Category</label>
+                <select name="selected_category" id="selected_category" class="form-control" onchange="this.form.submit()">
+                    {% for cat in category_names %}
+                    <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
                 </select>
             </div>
+            {% endif %}
             <button type="submit" class="btn btn-primary">Analyze</button>
         </form>
         {% if error %}
@@ -48,11 +54,11 @@
             <div class="card-header bg-info text-white">Summary</div>
             <div class="card-body">
                 <pre>{{ summary }}</pre>
-                <!-- Chart: Entries per Program -->
-                <h5 class="mt-4">Entries per Program</h5>
+                <!-- Chart: Entries per Category/Program -->
+                <h5 class="mt-4">Entries per Category{% if categories_input %} (Custom){% else %} (Program){% endif %}</h5>
                 <canvas id="programChart" height="120"></canvas>
-                <!-- Chart: Log Levels Pie -->
-                <h5 class="mt-4">Log Level Distribution</h5>
+                <!-- Chart: Category Distribution Pie -->
+                <h5 class="mt-4">Category Distribution</h5>
                 <canvas id="levelChart" height="120"></canvas>
                 <!-- Chart: Log Activity Over Time -->
                 <h5 class="mt-4">Log Activity Over Time</h5>
@@ -62,19 +68,21 @@
         {% endif %}
         {% if grouped %}
         <div class="card mb-3">
-            <div class="card-header bg-secondary text-white">Grouped by Program</div>
+            <div class="card-header bg-secondary text-white">
+                {% if categories_input %}Grouped by Custom Category{% else %}Grouped by Program{% endif %}
+            </div>
             <div class="card-body">
                 <table class="table table-bordered table-sm">
                     <thead>
                         <tr>
-                            <th>Program</th>
+                            <th>{% if categories_input %}Category{% else %}Program{% endif %}</th>
                             <th>Entries (showing up to 5)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for prog, entries in grouped.items() %}
+                        {% for key, entries in grouped.items() %}
                         <tr>
-                            <td>{{ prog }}</td>
+                            <td>{{ key }}</td>
                             <td>
                                 <ul style="padding-left: 1rem;">
                                 {% for entry in entries[:5] %}
@@ -135,7 +143,7 @@
     <script>
     const chartData = JSON.parse('{{ chart_data|safe }}');
 
-    // Entries per Program (Bar Chart)
+    // Entries per Category/Program (Bar Chart)
     const programCounts = chartData.program_counts || {};
     const programLabels = Object.keys(programCounts);
     const programValues = Object.values(programCounts);
@@ -159,7 +167,7 @@
         });
     }
 
-    // Log Level Distribution (Pie Chart)
+    // Category Distribution Pie Chart
     const levelCounts = chartData.level_counts || {};
     const levelLabels = Object.keys(levelCounts);
     const levelValues = Object.values(levelCounts);
@@ -172,7 +180,9 @@
                 labels: levelLabels,
                 datasets: [{
                     data: levelValues,
-                    backgroundColor: ['#28a745','#dc3545','#ffc107','#17a2b8'],
+                    backgroundColor: [
+                        '#007bff','#28a745','#dc3545','#ffc107','#17a2b8','#6f42c1','#fd7e14','#20c997','#e83e8c','#6610f2'
+                    ],
                 }]
             },
             options: {

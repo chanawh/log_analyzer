@@ -122,43 +122,92 @@ def tail_log():
 @app.route("/", methods=["GET", "POST"])
 def index():
     summary, lines, grouped, error = "", [], {}, None
-    program_counts = {}
-    level_counts = {}
+    chart_counts = {}
     timestamps = []
+    custom_categories = {}
+    categories_input = ""
+    selected_category = None
+    category_names = []
     if request.method == "POST":
         file = request.files.get("logfile")
         keyword = request.form.get("keyword", "").strip()
         start_date = request.form.get("start_date", "").strip()
         end_date = request.form.get("end_date", "").strip()
-        levels = request.form.getlist("levels")
+        categories_input = request.form.get("categories", "").strip()
+        selected_category = request.form.get("selected_category", "").strip()
         filepath = None
         if file and file.filename:
             safe_filename = werkzeug.utils.secure_filename(file.filename)
             filepath = UPLOAD_DIR / f"uploaded_{safe_filename}"
             file.save(str(filepath))
+        # Parse custom categories input
+        if categories_input:
+            for line in categories_input.splitlines():
+                if ":" in line:
+                    cat, pat = line.split(":", 1)
+                    custom_categories[cat.strip()] = pat.strip()
+            category_names = list(custom_categories.keys())
         try:
             if filepath and filepath.exists():
-                summary = summarize_log(filepath, keyword, start_date, end_date, levels)
-                lines = filter_log_lines(filepath, keyword, start_date, end_date, levels)
-                grouped = drill_down_by_program(filepath)
-
+                lines = filter_log_lines(filepath, keyword, start_date, end_date, None) # levels removed
                 import re
-                prog_pattern = re.compile(r'\s((?:isi_|celog|/boot)[\w./-]+)(?=\[|:)')
-                level_pattern = re.compile(r'\b(INFO|ERROR|WARN|DEBUG)\b')
                 ts_pattern = re.compile(r'(\d{4}-\d{2}-\d{2})')
-                program_counts = {}
-                level_counts = {}
                 timestamps = []
-                for line in lines:
-                    prog = prog_pattern.search(line)
-                    lvl = level_pattern.search(line)
-                    ts = ts_pattern.search(line)
-                    if prog:
-                        program_counts[prog.group(1)] = program_counts.get(prog.group(1), 0) + 1
-                    if lvl:
-                        level_counts[lvl.group(1)] = level_counts.get(lvl.group(1), 0) + 1
-                    if ts:
-                        timestamps.append(ts.group(1))
+                if custom_categories:
+                    grouped = {}
+                    for cat, pat in custom_categories.items():
+                        try:
+                            matcher = re.compile(pat)
+                            grouped[cat] = [line for line in lines if matcher.search(line)]
+                        except re.error:
+                            grouped[cat] = []
+                    chart_counts = {cat: len(entries) for cat, entries in grouped.items()}
+                    for entries in grouped.values():
+                        for line in entries:
+                            ts = ts_pattern.search(line)
+                            if ts:
+                                timestamps.append(ts.group(1))
+                    total_lines = sum(chart_counts.values())
+                    summary_lines = [f"📄 Total lines (after filtering): {total_lines}"]
+                    if keyword:
+                        summary_lines.append(f"🔍 Filtered by keyword: '{keyword}'")
+                    summary_lines.append(f"🗂️ Custom categories: {len(grouped)}")
+                    if grouped:
+                        summary_lines.append("🏷️ Category counts:")
+                        for cat, entries in grouped.items():
+                            summary_lines.append(f"  • {cat}: {len(entries)} entries")
+                    if timestamps:
+                        summary_lines.append(f"🕒 Time range: {min(timestamps)} → {max(timestamps)}")
+                    if start_date or end_date:
+                        summary_lines.append(f"📅 Filtered by date range: {start_date or '...'} → {end_date or '...'}")
+                    summary = "\n".join(summary_lines)
+                    # Option 2: let user choose category, default to first if none chosen
+                    if category_names:
+                        if not selected_category or selected_category not in category_names:
+                            selected_category = category_names[0]
+                        lines = grouped.get(selected_category, [])[:100]
+                else:
+                    # Fallback: group by keyword only if set, otherwise by program
+                    if keyword:
+                        grouped = {"Keyword": lines}
+                        chart_counts = {"Keyword": len(lines)}
+                    else:
+                        grouped = drill_down_by_program(filepath)
+                        chart_counts = {prog: len(entries) for prog, entries in grouped.items()}
+                    for line in lines:
+                        ts = ts_pattern.search(line)
+                        if ts:
+                            timestamps.append(ts.group(1))
+                    summary = f"📄 Total lines: {len(lines)}"
+                    if keyword:
+                        summary += f"\n🔍 Filtered by keyword: '{keyword}'\n"
+                    summary += f"\n🏷️ Group counts:\n"
+                    for key, cnt in chart_counts.items():
+                        summary += f"  • {key}: {cnt} entries\n"
+                    if timestamps:
+                        summary += f"🕒 Time range: {min(timestamps)} → {max(timestamps)}"
+                    if start_date or end_date:
+                        summary += f"\n📅 Filtered by date range: {start_date or '...'} → {end_date or '...'}"
             else:
                 error = "No log file uploaded."
         except Exception as e:
@@ -167,8 +216,8 @@ def index():
             if filepath and filepath.exists():
                 filepath.unlink()
     chart_data = {
-        "program_counts": program_counts,
-        "level_counts": level_counts,
+        "program_counts": chart_counts,  # Used for both bar/pie
+        "level_counts": chart_counts,    # Pie chart now matches categories/keywords
         "timestamps": timestamps,
     }
     return render_template(
@@ -177,7 +226,10 @@ def index():
         lines=lines[:100],
         grouped=grouped,
         error=error,
-        chart_data=json.dumps(chart_data)
+        chart_data=json.dumps(chart_data),
+        categories_input=categories_input,
+        category_names=category_names,
+        selected_category=selected_category
     )
 
 @app.route("/explain", methods=["POST"])
