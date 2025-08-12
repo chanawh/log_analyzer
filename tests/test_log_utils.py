@@ -2,6 +2,7 @@ import unittest
 from pathlib import Path
 from core.log_utils import filter_log_lines
 
+
 class TestFilterLogLines(unittest.TestCase):
     def setUp(self):
         # Create a temporary log file with different lines for testing
@@ -34,8 +35,8 @@ class TestFilterLogLines(unittest.TestCase):
             [
                 "2022-01-02 error: Failed",
                 "2022-01-03 info: Completed",
-                "2022-01-04 info: Another event"
-            ]
+                "2022-01-04 info: Another event",
+            ],
         )
 
     def test_end_date_filter(self):
@@ -46,19 +47,17 @@ class TestFilterLogLines(unittest.TestCase):
             [
                 "2022-01-01 info: Started",
                 "2022-01-02 error: Failed",
-                "2022-01-03 info: Completed"
-            ]
+                "2022-01-03 info: Completed",
+            ],
         )
 
     def test_date_range_filter(self):
         # Only lines between 2022-01-02 and 2022-01-03
-        lines = filter_log_lines(self.test_log, start_date="2022-01-02", end_date="2022-01-03")
+        lines = filter_log_lines(
+            self.test_log, start_date="2022-01-02", end_date="2022-01-03"
+        )
         self.assertEqual(
-            lines,
-            [
-                "2022-01-02 error: Failed",
-                "2022-01-03 info: Completed"
-            ]
+            lines, ["2022-01-02 error: Failed", "2022-01-03 info: Completed"]
         )
 
     def test_regex_partial_word(self):
@@ -82,5 +81,6 @@ class TestFilterLogLines(unittest.TestCase):
         lines = filter_log_lines(self.test_log, keyword=r"*invalid[")
         self.assertEqual(lines, [])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

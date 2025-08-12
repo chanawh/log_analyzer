@@ -5,11 +5,14 @@ from tkinter import filedialog, messagebox, scrolledtext
 from core.log_utils import filter_log_lines, summarize_log, drill_down_by_program
 from core.ssh_browser import SSHBrowser
 
+
 def launch_gui():
     browser = SSHBrowser()
 
     def browse_file():
-        path = filedialog.askopenfilename(filetypes=[("Log files", "*.log *.txt"), ("All files", "*.*")])
+        path = filedialog.askopenfilename(
+            filetypes=[("Log files", "*.log *.txt"), ("All files", "*.*")]
+        )
         if path:
             file_entry.delete(0, tk.END)
             file_entry.insert(0, path)
@@ -40,14 +43,20 @@ def launch_gui():
         if keyword:
             lines = filter_log_lines(filepath, keyword, start_date, end_date)
             output_text.insert(tk.END, "📌 Matching Lines:\n")
-            output_text.insert(tk.END, "\n".join(lines[:100]) + ("\n... (truncated)" if len(lines) > 100 else ""))
+            output_text.insert(
+                tk.END,
+                "\n".join(lines[:100])
+                + ("\n... (truncated)" if len(lines) > 100 else ""),
+            )
         else:
             grouped = drill_down_by_program(filepath)
             if not grouped:
                 output_text.insert(tk.END, "No matching programs found.")
                 return
             output_text.insert(tk.END, "📁 Grouped by Program:\n")
-            for prog, entries in sorted(grouped.items(), key=lambda x: len(x[1]), reverse=True):
+            for prog, entries in sorted(
+                grouped.items(), key=lambda x: len(x[1]), reverse=True
+            ):
                 output_text.insert(tk.END, f"{prog}: {len(entries)} entries\n")
                 for entry in entries[:5]:
                     output_text.insert(tk.END, f"  • {entry}\n")
@@ -97,7 +106,9 @@ def launch_gui():
             return
         local_path = browser.download_file(filename)
         if not local_path or Path(local_path).is_dir():
-            messagebox.showerror("Error", "Download failed or selected item is a directory.")
+            messagebox.showerror(
+                "Error", "Download failed or selected item is a directory."
+            )
             return
         file_entry.delete(0, tk.END)
         file_entry.insert(0, local_path)
@@ -129,7 +140,9 @@ def launch_gui():
     pass_entry = tk.Entry(root, width=50, show="*")
     pass_entry.grid(row=5, column=1, columnspan=2)
 
-    tk.Button(root, text="Connect SSH", command=connect_ssh).grid(row=6, column=1, pady=5)
+    tk.Button(root, text="Connect SSH", command=connect_ssh).grid(
+        row=6, column=1, pady=5
+    )
 
     remote_path_var = tk.StringVar()
     tk.Label(root, textvariable=remote_path_var).grid(row=7, column=0, columnspan=3)
@@ -139,7 +152,9 @@ def launch_gui():
 
     tk.Button(root, text="Go Up", command=go_up).grid(row=9, column=0)
     tk.Button(root, text="Enter Directory", command=enter_dir).grid(row=9, column=1)
-    tk.Button(root, text="Download & Analyze", command=download_selected).grid(row=9, column=2)
+    tk.Button(root, text="Download & Analyze", command=download_selected).grid(
+        row=9, column=2
+    )
 
     output_text = scrolledtext.ScrolledText(root, width=100, height=20)
     output_text.grid(row=10, column=0, columnspan=3, padx=10, pady=10)
@@ -147,7 +162,9 @@ def launch_gui():
     tk.Label(root, text="Enter Directory Path:").grid(row=11, column=0, sticky="e")
     manual_dir_entry = tk.Entry(root, width=50)
     manual_dir_entry.grid(row=11, column=1)
-    tk.Button(root, text="Go to Directory", command=lambda: go_to_manual_dir()).grid(row=11, column=2)
+    tk.Button(root, text="Go to Directory", command=lambda: go_to_manual_dir()).grid(
+        row=11, column=2
+    )
 
     tk.Label(root, text="Start Date (YYYY-MM-DD):").grid(row=12, column=0, sticky="e")
     start_date_entry = tk.Entry(root, width=50)

@@ -4,6 +4,7 @@ import stat
 import posixpath
 import paramiko
 
+
 class SSHBrowser:
     def __init__(self):
         self.ssh = None
@@ -38,11 +39,15 @@ class SSHBrowser:
         try:
             remote_files = self.sftp.listdir(self.current_path)
             if filename not in remote_files:
-                logging.error(f"File '{filename}' not found in remote directory '{self.current_path}'")
+                logging.error(
+                    f"File '{filename}' not found in remote directory '{self.current_path}'"
+                )
                 return ""
             self.sftp.get(remote_path, local_path)
             if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
-                logging.info(f"Downloaded file to {local_path} ({os.path.getsize(local_path)} bytes)")
+                logging.info(
+                    f"Downloaded file to {local_path} ({os.path.getsize(local_path)} bytes)"
+                )
             else:
                 logging.warning(f"Downloaded file is empty or missing: {local_path}")
             return local_path
@@ -54,5 +59,7 @@ class SSHBrowser:
             return ""
 
     def close(self):
-        if self.sftp: self.sftp.close()
-        if self.ssh: self.ssh.close()
+        if self.sftp:
+            self.sftp.close()
+        if self.ssh:
+            self.ssh.close()

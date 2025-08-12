@@ -4,8 +4,16 @@ import werkzeug
 import json
 import time
 from uuid import uuid4
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from api.ssh_api import connect_ssh, list_dir, change_dir, download_file, disconnect, tail_log
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from api.ssh_api import (
+    connect_ssh,
+    list_dir,
+    change_dir,
+    download_file,
+    disconnect,
+    tail_log,
+)
 
 from flask import Flask, render_template, request, jsonify, send_file, Response, session
 from pathlib import Path
@@ -14,24 +22,29 @@ from core.llm_utils import explain_log_entry
 from core.ssh_browser import SSHBrowser
 
 app = Flask(__name__)
-app.secret_key = "supersecret" # Set this securely in prod
+app.secret_key = "supersecret"  # Set this securely in prod
 
 UPLOAD_DIR = Path(os.path.dirname(__file__)) / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 ssh_sessions = {}
 
+
 def get_browser():
-    sid = session.get('sid')
+    sid = session.get("sid")
     if sid and sid in ssh_sessions:
         return ssh_sessions[sid]
     return None
 
+
 # --- Add sorting helper ---
 import re
+
+
 def get_date(line):
-    m = re.search(r'(\d{4}-\d{2}-\d{2})', line)
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", line)
     return m.group(1) if m else ""
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -47,8 +60,9 @@ def index():
         categories_input="",
         category_names=[],
         selected_category=None,
-        has_file=has_file
+        has_file=has_file,
     )
+
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -61,6 +75,7 @@ def upload():
     file.save(str(filepath))
     session["uploaded_filepath"] = str(filepath)
     return jsonify({"success": True})
+
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -87,7 +102,7 @@ def analyze():
 
     try:
         lines = filter_log_lines(filepath, keyword, start_date, end_date, None)
-        ts_pattern = re.compile(r'(\d{4}-\d{2}-\d{2})')
+        ts_pattern = re.compile(r"(\d{4}-\d{2}-\d{2})")
         timestamps = []
         chart_counts = {}
         grouped = {}
@@ -135,9 +150,13 @@ def analyze():
                 for cat, entries in grouped.items():
                     summary_lines.append(f"  • {cat}: {len(entries)} entries")
             if timestamps:
-                summary_lines.append(f"🕒 Time range: {min(timestamps)} → {max(timestamps)}")
+                summary_lines.append(
+                    f"🕒 Time range: {min(timestamps)} → {max(timestamps)}"
+                )
             if start_date or end_date:
-                summary_lines.append(f"📅 Filtered by date range: {start_date or '...'} → {end_date or '...'}")
+                summary_lines.append(
+                    f"📅 Filtered by date range: {start_date or '...'} → {end_date or '...'}"
+                )
             summary = "\n".join(summary_lines)
             # Option 2: let user choose category, default to first if none chosen
             if category_names:
@@ -206,11 +225,12 @@ def analyze():
             "categories_input": categories_input,
             "category_names": category_names,
             "selected_category": selected_category,
-            "error": None
+            "error": None,
         }
         return jsonify(response)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/clear_file", methods=["POST"])
 def clear_file():
@@ -220,6 +240,7 @@ def clear_file():
     session.pop("uploaded_filepath", None)
     return jsonify({"success": True})
 
+
 @app.route("/explain", methods=["POST"])
 def explain():
     log_text = request.form.get("log_text", "")
@@ -228,30 +249,37 @@ def explain():
         explanation = explain_log_entry(log_text)
     return render_template("explain.html", log_text=log_text, explanation=explanation)
 
+
 # --- SSH routes unchanged ---
 @app.route("/ssh/connect", methods=["POST"])
 def connect_ssh_route():
     return connect_ssh()
 
+
 @app.route("/ssh/list", methods=["GET"])
 def list_dir_route():
     return list_dir()
+
 
 @app.route("/ssh/change", methods=["POST"])
 def change_dir_route():
     return change_dir()
 
+
 @app.route("/ssh/download", methods=["POST"])
 def download_file_route():
     return download_file()
+
 
 @app.route("/ssh/disconnect", methods=["POST"])
 def disconnect_route():
     return disconnect()
 
+
 @app.route("/ssh/tail", methods=["POST"])
 def tail_log_route():
     return tail_log()
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

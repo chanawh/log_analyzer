@@ -4,10 +4,7 @@ import logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("log_analysis.log"),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.FileHandler("log_analysis.log"), logging.StreamHandler()],
 )
 
 from gui.gui import launch_gui
