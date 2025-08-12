@@ -40,9 +40,21 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip install coverage
 
-      - name: Run unit tests
-        run: python -m unittest discover -s tests
+      - name: Run unit tests with coverage
+        run: coverage run -m unittest discover -s tests
+
+      - name: Generate coverage report
+        run: |
+          coverage report
+          coverage xml
+
+      - name: Upload coverage report artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage.xml
 
   docker-build:
     runs-on: ubuntu-latest
@@ -53,5 +65,3 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t log_analyzer .
-
-      # You can add steps here to push the image to a registry or deploy, if needed
