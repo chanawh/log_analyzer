@@ -1,18 +1,40 @@
 # Log Analyzer
 
-A full-featured log analysis tool with both a web UI and a desktop GUI, designed for rapid investigation of large log files. Features advanced filtering, custom categories, SSH remote access, and LLM-powered log explanations.
+> **Modern, AI-powered log analysis for sysadmins, SREs, and developers.**  
+> Upload, filter, and understand logs—locally or remotely—with charts, SSH browsing, and natural language explanations.
 
 ---
 
-## 🚀 Features
+## 🔍 About Log Analyzer
 
-- **Web UI**: Upload and analyze logs in your browser—filter by keyword (regex supported), date range, and custom categories.
-- **Desktop GUI**: Launch a Tkinter-based GUI for offline log analysis.
-- **SSH Browser**: Connect to remote servers, browse directories, and download logs via SSH directly from the web or GUI.
-- **LLM Explanations**: Get natural language explanations of log entries using a local LLM (e.g. Microsoft Phi-2 or Mistral 7B).
-- **Charts & Summaries**: Visualize log statistics, activity over time, and category distributions.
-- **Dockerized**: Runs easily anywhere via Docker or Docker Compose.
-- **CI/CD**: Automated linting, testing, and Docker builds via GitHub Actions.
+Log Analyzer is a full-featured tool for rapid investigation and understanding of complex log files. Designed for sysadmins, SREs, and anyone who works with infrastructure or application logs, it offers a web UI and desktop GUI, remote SSH log browser, rich filters, and local LLM-powered explanations to make troubleshooting and root cause analysis faster than ever.
+
+**Key Features:**
+
+- Upload or browse logs locally and via SSH on remote servers
+- Advanced filtering (keyword/regex, date, category)
+- Summarize and visualize logs with interactive charts
+- Instantly explain log lines using a local LLM (Phi-2 or Mistral 7B)
+- Easy to run via Docker or Python
+
+---
+
+## 🚀 Get Started in 1 Minute
+
+### Docker (Recommended)
+
+```bash
+docker-compose up --build
+# Visit http://localhost:5000
+```
+
+### Local Python
+
+```bash
+pip install -r requirements.txt
+python api/webui.py      # Launch web UI
+python main.py           # Launch desktop GUI
+```
 
 ---
 
@@ -30,30 +52,11 @@ A full-featured log analysis tool with both a web UI and a desktop GUI, designed
 
 ## 📝 Quick Start
 
-### 1. Docker (Recommended)
-
-```bash
-docker-compose up --build
-# Visit http://localhost:5000
-```
-
-### 2. Local Python
-
-```bash
-pip install -r requirements.txt
-python api/webui.py      # Launch web UI
-python main.py           # Launch desktop GUI
-```
-
----
-
-## 💡 Usage Highlights
-
-- **Upload Log File**: Use the web UI or GUI to select and upload a log file.
-- **Filter & Analyze**: Filter by keyword (regex), date range, and group by log program or custom categories.
-- **SSH Remote Access**: Enter SSH credentials, browse directories, and download logs for analysis.
-- **Explain Log Entries**: Select any log line and get an LLM-based, plain English explanation.
-- **Charts**: Interactive charts display log activity, categories, and trends.
+- **Upload Log**: In the web UI or GUI, select a log file to analyze.
+- **Filter & Analyze**: Use keyword (regex), date, or custom categories to filter.
+- **SSH**: Connect to remote servers, browse directories, and download logs securely.
+- **Explain**: Select any log line for an LLM-powered, plain English explanation.
+- **Visualize**: See log patterns and timelines with interactive charts.
 
 ---
 
