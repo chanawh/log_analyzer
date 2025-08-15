@@ -19,16 +19,18 @@ LOGIN_URL = (
     "&contextid=2323a4792b1442b8968b7b8d360ef634"
 )
 
+
 def extract_programs_from_log(log_path):
     # This regex should match your log's program fields
     prog_regex = re.compile(r"\s(\S+?)(?:\[\d+\])?:")
     programs = []
-    with open(log_path, 'r', encoding='utf-8') as f:
+    with open(log_path, "r", encoding="utf-8") as f:
         for line in f:
             match = prog_regex.search(line)
             if match:
                 programs.append(match.group(1))
     return programs
+
 
 def get_most_frequent_program(log_path):
     programs = extract_programs_from_log(log_path)
@@ -36,6 +38,7 @@ def get_most_frequent_program(log_path):
         return None
     counter = Counter(programs)
     return counter.most_common(1)[0][0]
+
 
 def main():
     log_path = "../test_complex.log"  # Change to your log file
@@ -54,7 +57,9 @@ def main():
 
     print(f"Opening Dell SSO login page: {LOGIN_URL}")
     driver.get(LOGIN_URL)
-    input("Complete Dell SSO login in the browser. Once logged in (any page), press Enter here...")
+    input(
+        "Complete Dell SSO login in the browser. Once logged in (any page), press Enter here..."
+    )
 
     print(f"Redirecting to search page as authenticated user: {search_url}")
     driver.get(search_url)
@@ -64,6 +69,7 @@ def main():
     print("You are now on the search page as a logged-in user.")
 
     # driver.quit()
+
 
 if __name__ == "__main__":
     main()
